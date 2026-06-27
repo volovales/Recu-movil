@@ -1,241 +1,198 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import Button from '../../components/Button';
 import InputField from '../../components/InputField';
-import {
-    Platillo,
-    actualizarPlatillo,
-    crearPlatillo,
-    eliminarPlatillo,
-    obtenerPlatillos,
-} from '../../database/platillosDB';
+import { Platillo, actualizarPlatillo, crearPlatillo, eliminarPlatillo, obtenerPlatillos } from '../../database/platillosDB';
+import { Crimson, Dark, Radius, Shadow, Spacing, Typography } from '../../theme';
 
 const CATEGORIAS = ['Tacos', 'Entradas', 'Sopas', 'Bebidas', 'Postres', 'Otros'];
-const CATEGORIA_EMOJI: Record<string, string> = {
-  Tacos: '🌮', Entradas: '🥗', Sopas: '🍲',
-  Bebidas: '🥤', Postres: '🍮', Otros: '🍽️',
+const CAT_EMOJI: Record<string, string> = {
+  Tacos: '🌮', Entradas: '🥗', Sopas: '🍲', Bebidas: '🥤', Postres: '🍮', Otros: '🍽️',
 };
 
-interface Errores {
-  nombre?: string;
-  descripcion?: string;
-  precio?: string;
-}
+interface Errs { nombre?: string; descripcion?: string; precio?: string; }
 
 const MenuEmpleadoScreen: React.FC = () => {
-  const [platillos, setPlatillos] = useState<Platillo[]>([]);
-  const [categoriaActiva, setCategoriaActiva] = useState('Tacos');
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editando, setEditando] = useState<Platillo | null>(null);
-
-  // Campos del form
-  const [nombre, setNombre] = useState('');
-  const [descripcion, setDescripcion] = useState('');
-  const [precio, setPrecio] = useState('');
-  const [categoria, setCategoria] = useState(CATEGORIAS[0]);
+  const [platillos, setPlatillos]   = useState<Platillo[]>([]);
+  const [catActiva, setCatActiva]   = useState('Tacos');
+  const [modal, setModal]           = useState(false);
+  const [editando, setEditando]     = useState<Platillo | null>(null);
+  const [nombre, setNombre]         = useState('');
+  const [descripcion, setDesc]      = useState('');
+  const [precio, setPrecio]         = useState('');
+  const [categoria, setCategoria]   = useState('Tacos');
   const [disponible, setDisponible] = useState(true);
-  const [errores, setErrores] = useState<Errores>({});
+  const [errs, setErrs]             = useState<Errs>({});
 
   const cargar = useCallback(() => setPlatillos(obtenerPlatillos()), []);
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
-  const platillosFiltrados = platillos.filter(p => p.categoria === categoriaActiva);
+  const filtrados = platillos.filter(p => p.categoria === catActiva);
 
   const abrirNuevo = () => {
-    setEditando(null);
-    setNombre(''); setDescripcion(''); setPrecio('');
-    setCategoria(categoriaActiva); setDisponible(true); setErrores({});
-    setModalVisible(true);
+    setEditando(null); setNombre(''); setDesc(''); setPrecio('');
+    setCategoria(catActiva); setDisponible(true); setErrs({}); setModal(true);
   };
 
   const abrirEditar = (p: Platillo) => {
-    setEditando(p);
-    setNombre(p.nombre); setDescripcion(p.descripcion);
+    setEditando(p); setNombre(p.nombre); setDesc(p.descripcion);
     setPrecio(String(p.precio)); setCategoria(p.categoria);
-    setDisponible(p.disponible === 1); setErrores({});
-    setModalVisible(true);
+    setDisponible(p.disponible === 1); setErrs({}); setModal(true);
   };
 
-  const validar = (): boolean => {
-    const e: Errores = {};
+  const validar = () => {
+    const e: Errs = {};
     if (!nombre.trim() || nombre.trim().length < 3) e.nombre = 'Mínimo 3 caracteres';
-    if (!descripcion.trim()) e.descripcion = 'La descripción es obligatoria';
+    if (!descripcion.trim()) e.descripcion = 'Descripción obligatoria';
     const p = parseFloat(precio);
-    if (!precio.trim()) e.precio = 'El precio es obligatorio';
-    else if (isNaN(p) || p <= 0) e.precio = 'Ingresa un precio válido mayor a 0';
-    setErrores(e);
-    return Object.keys(e).length === 0;
+    if (!precio.trim()) e.precio = 'Precio obligatorio';
+    else if (isNaN(p) || p <= 0) e.precio = 'Precio inválido';
+    setErrs(e); return Object.keys(e).length === 0;
   };
 
   const guardar = () => {
     if (!validar()) return;
-    const datos = {
-      nombre: nombre.trim(), descripcion: descripcion.trim(),
-      precio: parseFloat(precio), categoria,
-      disponible: disponible ? 1 : 0,
-    };
-    if (editando?.id) actualizarPlatillo(editando.id, datos);
-    else crearPlatillo(datos);
-    setModalVisible(false);
-    cargar();
+    const datos = { nombre: nombre.trim(), descripcion: descripcion.trim(), precio: parseFloat(precio), categoria, disponible: disponible ? 1 : 0 };
+    editando?.id ? actualizarPlatillo(editando.id, datos) : crearPlatillo(datos);
+    setModal(false); cargar();
   };
 
-  const confirmarEliminar = (id: number, nombre: string) => {
-    Alert.alert('Eliminar platillo', `¿Eliminar "${nombre}" del menú?`, [
+  const eliminar = (id: number, nombre: string) => {
+    Alert.alert('Eliminar', `¿Eliminar "${nombre}"?`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: () => { eliminarPlatillo(id); cargar(); } },
     ]);
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f2e" />
+    <View style={styles.screen}>
+      <StatusBar barStyle="light-content" backgroundColor={Dark.bg0} />
 
-      {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.titulo}>Menú 🍜</Text>
-          <Text style={styles.subtitulo}>{platillos.length} platillos en total</Text>
+          <Text style={styles.titulo}>Menú</Text>
+          <Text style={styles.subtitulo}>{platillos.length} platillos registrados</Text>
         </View>
-        <TouchableOpacity style={styles.btnAgregar} onPress={abrirNuevo}>
-          <Text style={styles.btnAgregarText}>+ Agregar</Text>
+        <TouchableOpacity style={[styles.btnAdd, { backgroundColor: Crimson.primary }]} onPress={abrirNuevo}>
+          <Text style={styles.btnAddText}>+ Agregar</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Tabs de categoría */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
+      {/* Tabs categoría */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs} contentContainerStyle={{ paddingHorizontal: Spacing.screenX }}>
         {CATEGORIAS.map(cat => {
-          const count = platillos.filter(p => p.categoria === cat).length;
+          const cnt = platillos.filter(p => p.categoria === cat).length;
+          const active = catActiva === cat;
           return (
-            <TouchableOpacity
-              key={cat}
-              style={[styles.tab, categoriaActiva === cat && styles.tabActivo]}
-              onPress={() => setCategoriaActiva(cat)}
-            >
-              <Text style={styles.tabEmoji}>{CATEGORIA_EMOJI[cat]}</Text>
-              <Text style={[styles.tabText, categoriaActiva === cat && styles.tabTextActivo]}>
-                {cat}
-              </Text>
-              {count > 0 && (
-                <View style={styles.tabBadge}>
-                  <Text style={styles.tabBadgeText}>{count}</Text>
-                </View>
-              )}
+            <TouchableOpacity key={cat}
+              style={[styles.tab, active && { backgroundColor: Crimson.subtle, borderColor: Crimson.primary }]}
+              onPress={() => setCatActiva(cat)}>
+              <Text style={styles.tabEmoji}>{CAT_EMOJI[cat]}</Text>
+              <Text style={[styles.tabText, active && { color: Crimson.primary }]}>{cat}</Text>
+              {cnt > 0 && <View style={[styles.tabCnt, { backgroundColor: active ? Crimson.primary : Dark.bg3 }]}>
+                <Text style={[styles.tabCntText, { color: active ? '#fff' : Dark.textMuted }]}>{cnt}</Text>
+              </View>}
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      {/* Lista de platillos de la categoría */}
+      {/* Lista */}
       <FlatList
-        data={platillosFiltrados}
-        keyExtractor={item => String(item.id)}
+        data={filtrados}
+        keyExtractor={i => String(i.id)}
         contentContainerStyle={styles.lista}
+        showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <View style={[styles.card, Shadow.sm]}>
             <View style={styles.cardTop}>
               <View style={styles.cardInfo}>
-                <Text style={styles.platilloNombre}>{item.nombre}</Text>
-                <Text style={styles.platilloDesc} numberOfLines={2}>{item.descripcion}</Text>
+                <Text style={styles.platNombre}>{item.nombre}</Text>
+                <Text style={styles.platDesc} numberOfLines={2}>{item.descripcion}</Text>
+                <Text style={[styles.platPrecio, { color: Crimson.primary }]}>${item.precio.toFixed(2)}</Text>
               </View>
-              <View style={styles.cardDerecha}>
-                <Text style={styles.platilloPrecio}>${item.precio.toFixed(2)}</Text>
-                <View style={[styles.dispBadge, item.disponible ? styles.dispOn : styles.dispOff]}>
-                  <Text style={styles.dispText}>
-                    {item.disponible ? '✅ Activo' : '⛔ Inactivo'}
-                  </Text>
-                </View>
+              <View style={[styles.dispTag, { backgroundColor: item.disponible ? '#22C55E18' : '#EF444418' }]}>
+                <Text style={[styles.dispText, { color: item.disponible ? '#22C55E' : '#EF4444' }]}>
+                  {item.disponible ? '● Activo' : '● Inactivo'}
+                </Text>
               </View>
             </View>
-            <View style={styles.cardAcciones}>
-              <TouchableOpacity style={styles.btnEditar} onPress={() => abrirEditar(item)}>
-                <Text style={styles.btnEditarText}>✏️ Editar</Text>
+            <View style={styles.cardActions}>
+              <TouchableOpacity style={[styles.btnAction, { borderColor: Dark.border }]} onPress={() => abrirEditar(item)}>
+                <Text style={styles.btnActionText}>✏️  Editar</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.btnEliminar}
-                onPress={() => item.id && confirmarEliminar(item.id, item.nombre)}
-              >
-                <Text style={styles.btnEliminarText}>🗑️ Eliminar</Text>
+              <TouchableOpacity style={[styles.btnAction, { borderColor: Crimson.primary + '44' }]}
+                onPress={() => item.id && eliminar(item.id, item.nombre)}>
+                <Text style={[styles.btnActionText, { color: Crimson.light }]}>🗑️  Eliminar</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
         ListEmptyComponent={
-          <View style={styles.vacio}>
-            <Text style={styles.vacioEmoji}>{CATEGORIA_EMOJI[categoriaActiva]}</Text>
-            <Text style={styles.vacioTexto}>Sin platillos en {categoriaActiva}</Text>
-            <TouchableOpacity style={styles.btnVacioAgregar} onPress={abrirNuevo}>
-              <Text style={styles.btnVacioAgregarText}>+ Agregar el primero</Text>
+          <View style={styles.empty}>
+            <Text style={{ fontSize: 52 }}>{CAT_EMOJI[catActiva]}</Text>
+            <Text style={styles.emptyText}>Sin platillos en {catActiva}</Text>
+            <TouchableOpacity style={[styles.btnEmptyAdd, { borderColor: Crimson.primary }]} onPress={abrirNuevo}>
+              <Text style={[styles.btnEmptyAddText, { color: Crimson.primary }]}>+ Agregar el primero</Text>
             </TouchableOpacity>
           </View>
         }
       />
 
-      {/* Modal formulario */}
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+      {/* Modal */}
+      <Modal visible={modal} animationType="slide" transparent>
+        <View style={styles.overlay}>
+          <View style={styles.modalBox}>
+            <View style={styles.handle} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>
-                {editando ? '✏️ Editar platillo' : '➕ Nuevo platillo'}
-              </Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Text style={styles.cerrar}>✕</Text>
+              <Text style={styles.modalTitulo}>{editando ? 'Editar platillo' : 'Nuevo platillo'}</Text>
+              <TouchableOpacity onPress={() => setModal(false)} style={styles.closeBtn}>
+                <Text style={styles.closeText}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <InputField label="Nombre" value={nombre} onChangeText={setNombre}
-                placeholder="Ej. Tacos al Pastor" error={errores.nombre} required />
-
-              <InputField label="Descripción" value={descripcion} onChangeText={setDescripcion}
-                placeholder="Ingredientes o descripción breve" error={errores.descripcion}
-                multiline numberOfLines={2} required />
-
+                placeholder="Ej. Tacos al Pastor" error={errs.nombre} required accentColor={Crimson.primary} />
+              <InputField label="Descripción" value={descripcion} onChangeText={setDesc}
+                placeholder="Ingredientes o descripción" error={errs.descripcion}
+                multiline numberOfLines={2} required accentColor={Crimson.primary} />
               <InputField label="Precio (MXN)" value={precio} onChangeText={setPrecio}
-                placeholder="0.00" keyboardType="decimal-pad" error={errores.precio} required />
+                placeholder="0.00" keyboardType="decimal-pad" error={errs.precio} required accentColor={Crimson.primary} />
 
-              {/* Selector categoría */}
-              <Text style={styles.labelCat}>Categoría <Text style={{ color: '#00d4ff' }}>*</Text></Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+              <Text style={styles.catLabel}>CATEGORÍA</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>
                 {CATEGORIAS.map(cat => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[styles.catBtn, categoria === cat && styles.catBtnActivo]}
-                    onPress={() => setCategoria(cat)}
-                  >
-                    <Text style={styles.catBtnEmoji}>{CATEGORIA_EMOJI[cat]}</Text>
-                    <Text style={[styles.catBtnText, categoria === cat && styles.catBtnTextActivo]}>
-                      {cat}
-                    </Text>
+                  <TouchableOpacity key={cat}
+                    style={[styles.catChip, categoria === cat && { backgroundColor: Crimson.subtle, borderColor: Crimson.primary }]}
+                    onPress={() => setCategoria(cat)}>
+                    <Text style={styles.catChipEmoji}>{CAT_EMOJI[cat]}</Text>
+                    <Text style={[styles.catChipText, categoria === cat && { color: Crimson.primary }]}>{cat}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
-              {/* Switch disponible */}
               <View style={styles.switchRow}>
                 <Text style={styles.switchLabel}>Disponible en menú</Text>
                 <Switch value={disponible} onValueChange={setDisponible}
-                  trackColor={{ false: '#3a1010', true: '#1b1b5c' }}
-                  thumbColor={disponible ? '#00d4ff' : '#888'} />
+                  trackColor={{ false: Dark.bg3, true: Crimson.dark }}
+                  thumbColor={disponible ? Crimson.primary : Dark.textMuted} />
               </View>
 
-              <TouchableOpacity style={styles.btnGuardar} onPress={guardar}>
-                <Text style={styles.btnGuardarText}>
-                  {editando ? 'Guardar cambios' : 'Agregar al menú'}
-                </Text>
-              </TouchableOpacity>
+              <Button label={editando ? 'Guardar cambios' : 'Agregar al menú'}
+                onPress={guardar} color={Crimson.primary} style={{ marginBottom: Spacing.xl }} />
             </ScrollView>
           </View>
         </View>
@@ -245,100 +202,47 @@ const MenuEmpleadoScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f2e' },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14,
-  },
-  titulo: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  subtitulo: { color: '#666', fontSize: 13, marginTop: 2 },
-  btnAgregar: {
-    backgroundColor: '#1b1b5c', borderRadius: 10,
-    paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: '#00d4ff',
-  },
-  btnAgregarText: { color: '#00d4ff', fontWeight: '700', fontSize: 15 },
-  tabsScroll: { paddingHorizontal: 16, marginBottom: 8, maxHeight: 60 },
-  tab: {
-    alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8,
-    borderRadius: 22, marginRight: 8, backgroundColor: '#16213e',
-    borderWidth: 1, borderColor: '#2a2a6e', flexDirection: 'row', gap: 6,
-  },
-  tabActivo: { backgroundColor: '#1b1b5c', borderColor: '#00d4ff' },
-  tabEmoji: { fontSize: 16 },
-  tabText: { color: '#888', fontSize: 13, fontWeight: '600' },
-  tabTextActivo: { color: '#00d4ff', fontWeight: '700' },
-  tabBadge: {
-    backgroundColor: '#00d4ff', borderRadius: 10,
-    width: 18, height: 18, justifyContent: 'center', alignItems: 'center',
-  },
-  tabBadgeText: { color: '#0f0f2e', fontSize: 10, fontWeight: '800' },
-  lista: { padding: 16, paddingBottom: 30 },
-  card: {
-    backgroundColor: '#16213e', borderRadius: 12, padding: 14,
-    marginBottom: 12, borderWidth: 1, borderColor: '#2a2a6e',
-  },
-  cardTop: { flexDirection: 'row', marginBottom: 10 },
-  cardInfo: { flex: 1, marginRight: 10 },
-  platilloNombre: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  platilloDesc: { color: '#888', fontSize: 12, marginTop: 3, lineHeight: 17 },
-  cardDerecha: { alignItems: 'flex-end' },
-  platilloPrecio: { color: '#00d4ff', fontSize: 20, fontWeight: '900' },
-  dispBadge: { marginTop: 4, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  dispOn: { backgroundColor: '#1a3a1a' },
-  dispOff: { backgroundColor: '#3a1a1a' },
-  dispText: { fontSize: 10, color: '#aaa' },
-  cardAcciones: { flexDirection: 'row', gap: 8 },
-  btnEditar: {
-    flex: 1, backgroundColor: '#1b1b5c', borderRadius: 8,
-    paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#2a2a6e',
-  },
-  btnEditarText: { color: '#00d4ff', fontSize: 13, fontWeight: '600' },
-  btnEliminar: {
-    flex: 1, backgroundColor: '#3a1010', borderRadius: 8,
-    paddingVertical: 8, alignItems: 'center',
-  },
-  btnEliminarText: { color: '#ff6b6b', fontSize: 13, fontWeight: '600' },
-  vacio: { alignItems: 'center', paddingTop: 60 },
-  vacioEmoji: { fontSize: 52, marginBottom: 12 },
-  vacioTexto: { color: '#aaa', fontSize: 16, marginBottom: 16 },
-  btnVacioAgregar: {
-    backgroundColor: '#1b1b5c', borderRadius: 10,
-    paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1, borderColor: '#00d4ff',
-  },
-  btnVacioAgregarText: { color: '#00d4ff', fontWeight: '700' },
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalContainer: {
-    backgroundColor: '#0f0f2e', borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, maxHeight: '90%', borderTopWidth: 1, borderColor: '#2a2a6e',
-  },
-  modalHeader: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 20,
-  },
-  modalTitulo: { color: '#fff', fontSize: 19, fontWeight: '800' },
-  cerrar: { color: '#666', fontSize: 22, padding: 4 },
-  labelCat: { color: '#ccc', fontSize: 13, fontWeight: '500', marginBottom: 8 },
-  catBtn: {
-    alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, marginRight: 8, backgroundColor: '#16213e',
-    borderWidth: 1, borderColor: '#2a2a6e',
-  },
-  catBtnActivo: { backgroundColor: '#1b1b5c', borderColor: '#00d4ff' },
-  catBtnEmoji: { fontSize: 18, marginBottom: 2 },
-  catBtnText: { color: '#888', fontSize: 11 },
-  catBtnTextActivo: { color: '#00d4ff', fontWeight: '700' },
-  switchRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#16213e', padding: 14, borderRadius: 10,
-    borderWidth: 1, borderColor: '#2a2a6e', marginBottom: 16,
-  },
-  switchLabel: { color: '#ccc', fontSize: 15 },
-  btnGuardar: {
-    backgroundColor: '#00d4ff', borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center', marginBottom: 20,
-  },
-  btnGuardarText: { color: '#0f0f2e', fontSize: 16, fontWeight: '800' },
+  screen:    { flex: 1, backgroundColor: Dark.bg0 },
+  header:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.screenX, paddingTop: Spacing.screenH, paddingBottom: Spacing.md },
+  titulo:    { ...Typography.h1, color: Dark.textPrimary },
+  subtitulo: { ...Typography.body, color: Dark.textSecondary, marginTop: 2 },
+  btnAdd:    { borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10 },
+  btnAddText:{ color: '#fff', fontWeight: '700', fontSize: 14 },
+  tabs:      { maxHeight: 56, marginBottom: Spacing.sm },
+  tab:       { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.full, marginRight: 8, backgroundColor: Dark.bg2, borderWidth: 1, borderColor: Dark.border },
+  tabEmoji:  { fontSize: 15 },
+  tabText:   { ...Typography.small, fontWeight: '600', color: Dark.textSecondary },
+  tabCnt:    { width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  tabCntText:{ fontSize: 10, fontWeight: '800' },
+  lista:     { paddingHorizontal: Spacing.screenX, paddingBottom: 30 },
+  card:      { backgroundColor: Dark.bg2, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Dark.border },
+  cardTop:   { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.md },
+  cardInfo:  { flex: 1, marginRight: Spacing.sm },
+  platNombre:{ ...Typography.h4, color: Dark.textPrimary },
+  platDesc:  { ...Typography.small, color: Dark.textSecondary, marginTop: 3, lineHeight: 17 },
+  platPrecio:{ fontSize: 20, fontWeight: '900', marginTop: 6 },
+  dispTag:   { borderRadius: Radius.sm, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start' },
+  dispText:  { fontSize: 11, fontWeight: '700' },
+  cardActions:{ flexDirection: 'row', gap: 8 },
+  btnAction: { flex: 1, borderWidth: 1, borderRadius: Radius.sm, paddingVertical: 8, alignItems: 'center' },
+  btnActionText: { ...Typography.small, color: Dark.textSecondary, fontWeight: '600' },
+  empty:     { alignItems: 'center', paddingTop: 80, gap: 12 },
+  emptyText: { ...Typography.h4, color: Dark.textSecondary },
+  btnEmptyAdd:{ borderWidth: 1.5, borderRadius: Radius.md, paddingHorizontal: Spacing.lg, paddingVertical: 10 },
+  btnEmptyAddText: { fontWeight: '700' },
+  overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
+  modalBox:  { backgroundColor: Dark.bg1, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, padding: Spacing.lg, maxHeight: '92%', borderTopWidth: 1, borderColor: Dark.border },
+  handle:    { width: 40, height: 4, backgroundColor: Dark.border, borderRadius: 2, alignSelf: 'center', marginBottom: Spacing.md },
+  modalHeader:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
+  modalTitulo:{ ...Typography.h2, color: Dark.textPrimary },
+  closeBtn:  { width: 32, height: 32, borderRadius: 16, backgroundColor: Dark.bg3, justifyContent: 'center', alignItems: 'center' },
+  closeText: { color: Dark.textSecondary, fontSize: 14, fontWeight: '700' },
+  catLabel:  { ...Typography.label, color: Dark.textMuted, marginBottom: Spacing.sm },
+  catChip:   { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full, marginRight: 8, backgroundColor: Dark.bg3, borderWidth: 1, borderColor: Dark.border },
+  catChipEmoji: { fontSize: 15 },
+  catChipText:  { ...Typography.small, fontWeight: '600', color: Dark.textSecondary },
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Dark.bg3, padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1, borderColor: Dark.border, marginBottom: Spacing.md },
+  switchLabel:{ ...Typography.body, color: Dark.textSecondary },
 });
 
 export default MenuEmpleadoScreen;

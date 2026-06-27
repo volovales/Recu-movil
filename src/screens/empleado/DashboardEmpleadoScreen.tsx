@@ -4,110 +4,103 @@ import { RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'r
 import { useAuth } from '../../context/AuthContext';
 import { obtenerEstadisticas } from '../../database/pedidosDB';
 import { obtenerPlatillos } from '../../database/platillosDB';
+import { Crimson, Dark, Radius, Shadow, Spacing, Typography } from '../../theme';
 
 const DashboardEmpleadoScreen: React.FC = () => {
   const { usuario } = useAuth();
-  const [stats, setStats] = useState({ totalPedidos: 0, pedidosPendientes: 0, totalVentas: 0, totalClientes: 0 });
-  const [totalPlatillos, setTotalPlatillos] = useState(0);
+  const [stats, setStats]           = useState({ totalPedidos: 0, pedidosPendientes: 0, totalVentas: 0, totalClientes: 0 });
+  const [totalPlatillos, setTotal]  = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
   const cargar = useCallback(() => {
     setStats(obtenerEstadisticas());
-    setTotalPlatillos(obtenerPlatillos().length);
+    setTotal(obtenerPlatillos().length);
   }, []);
 
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
-
   const onRefresh = () => { setRefreshing(true); cargar(); setRefreshing(false); };
 
   const hora = new Date().getHours();
   const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
 
-  return (
-    <ScrollView
-      style={styles.container} contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00d4ff" />}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f2e" />
+  const statCards = [
+    { label: 'Pendientes',    val: stats.pedidosPendientes,          color: '#F59E0B', emoji: '⏳' },
+    { label: 'Total pedidos', val: stats.totalPedidos,               color: Crimson.primary, emoji: '📋' },
+    { label: 'Ventas',        val: `$${stats.totalVentas.toFixed(0)}`, color: '#22C55E', emoji: '💰' },
+    { label: 'Clientes',      val: stats.totalClientes,              color: '#6366F1', emoji: '👥' },
+    { label: 'En menú',       val: totalPlatillos,                   color: '#FB923C', emoji: '🍜' },
+  ];
 
-      <View style={styles.header}>
-        <Text style={styles.saludo}>{saludo}, {usuario?.nombre?.split(' ')[0]} 👋</Text>
-        <Text style={styles.fecha}>
-          {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
-        </Text>
-        <View style={styles.empleadoBadge}>
-          <Text style={styles.empleadoBadgeText}>👔 Empleado</Text>
+  return (
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Crimson.primary} />}>
+      <StatusBar barStyle="light-content" backgroundColor={Dark.bg0} />
+
+      {/* Greeting */}
+      <View style={styles.greeting}>
+        <View>
+          <Text style={styles.saludo}>{saludo},</Text>
+          <Text style={styles.nombre}>{usuario?.nombre?.split(' ')[0]} 👋</Text>
+          <Text style={styles.fecha}>
+            {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </Text>
+        </View>
+        <View style={[styles.rolBadge, { backgroundColor: Crimson.subtle, borderColor: Crimson.primary + '55' }]}>
+          <Text style={[styles.rolText, { color: Crimson.light }]}>👔 Empleado</Text>
         </View>
       </View>
 
-      <Text style={styles.seccionTitulo}>Resumen del día</Text>
-
-      <View style={styles.grid}>
-        {[
-          { label: 'Pendientes', valor: stats.pedidosPendientes, color: '#feca57', emoji: '⏳' },
-          { label: 'Total pedidos', valor: stats.totalPedidos, color: '#00d4ff', emoji: '📋' },
-          { label: 'Ventas', valor: `$${stats.totalVentas.toFixed(0)}`, color: '#26de81', emoji: '💰' },
-          { label: 'Clientes', valor: stats.totalClientes, color: '#ff9f43', emoji: '👥' },
-          { label: 'En menú', valor: totalPlatillos, color: '#a29bfe', emoji: '🍜' },
-        ].map((item, i) => (
-          <View key={i} style={[styles.statCard, { borderColor: item.color }]}>
-            <Text style={styles.statEmoji}>{item.emoji}</Text>
-            <Text style={[styles.statValor, { color: item.color }]}>{item.valor}</Text>
-            <Text style={styles.statLabel}>{item.label}</Text>
+      {/* Stats */}
+      <Text style={styles.sectionTitle}>RESUMEN DEL DÍA</Text>
+      <View style={styles.statsGrid}>
+        {statCards.map((s, i) => (
+          <View key={i} style={[styles.statCard, Shadow.sm, { borderColor: s.color + '33' }]}>
+            <Text style={styles.statEmoji}>{s.emoji}</Text>
+            <Text style={[styles.statVal, { color: s.color }]}>{s.val}</Text>
+            <Text style={styles.statLabel}>{s.label}</Text>
           </View>
         ))}
       </View>
 
-      <View style={styles.ayuda}>
-        <Text style={styles.ayudaTitulo}>Navegación rápida</Text>
-        {[
-          { emoji: '📋', titulo: 'Pedidos', desc: 'Gestiona y avanza el estado de los pedidos' },
-          { emoji: '🍜', titulo: 'Menú', desc: 'Agrega, edita o elimina platillos' },
-          { emoji: '👤', titulo: 'Mi cuenta', desc: 'Tu información y cerrar sesión' },
-        ].map((item, i) => (
-          <View key={i} style={styles.navItem}>
-            <Text style={styles.navEmoji}>{item.emoji}</Text>
-            <View>
-              <Text style={styles.navTitulo}>{item.titulo}</Text>
-              <Text style={styles.navDesc}>{item.desc}</Text>
-            </View>
+      {/* Quick nav */}
+      <Text style={styles.sectionTitle}>ACCESOS RÁPIDOS</Text>
+      {[
+        { emoji: '📋', titulo: 'Pedidos en curso', desc: 'Gestiona y avanza el estado de los pedidos activos', color: Crimson.primary },
+        { emoji: '🍜', titulo: 'Gestión del menú', desc: 'Agrega, edita o desactiva platillos', color: '#FB923C' },
+      ].map((item, i) => (
+        <View key={i} style={[styles.navCard, Shadow.sm, { borderLeftColor: item.color, borderLeftWidth: 3 }]}>
+          <Text style={{ fontSize: 28 }}>{item.emoji}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.navTitulo}>{item.titulo}</Text>
+            <Text style={styles.navDesc}>{item.desc}</Text>
           </View>
-        ))}
-      </View>
+        </View>
+      ))}
+
+      <Text style={styles.hint}>↕ Jala para actualizar</Text>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f2e' },
-  content: { padding: 20, paddingTop: 52 },
-  header: { marginBottom: 28 },
-  saludo: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  fecha: { color: '#555', fontSize: 13, marginTop: 4, textTransform: 'capitalize' },
-  empleadoBadge: {
-    marginTop: 10, alignSelf: 'flex-start',
-    backgroundColor: '#1a2a1a', borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 5,
-  },
-  empleadoBadgeText: { color: '#26de81', fontSize: 12, fontWeight: '700' },
-  seccionTitulo: {
-    color: '#aaa', fontSize: 12, fontWeight: '700',
-    textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12,
-  },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
-  statCard: {
-    width: '47%', backgroundColor: '#16213e', borderRadius: 14,
-    padding: 16, alignItems: 'center', borderWidth: 1,
-  },
-  statEmoji: { fontSize: 24, marginBottom: 6 },
-  statValor: { fontSize: 26, fontWeight: '900' },
-  statLabel: { color: '#666', fontSize: 11, marginTop: 2, fontWeight: '600' },
-  ayuda: { backgroundColor: '#16213e', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#2a2a6e' },
-  ayudaTitulo: { color: '#aaa', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14 },
-  navItem: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 14 },
-  navEmoji: { fontSize: 26 },
-  navTitulo: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  navDesc: { color: '#555', fontSize: 12, marginTop: 2 },
+  screen:      { flex: 1, backgroundColor: Dark.bg0 },
+  content:     { padding: Spacing.screenX, paddingTop: Spacing.screenH, paddingBottom: 40 },
+  greeting:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.xl },
+  saludo:      { ...Typography.body, color: Dark.textSecondary },
+  nombre:      { ...Typography.h1, color: Dark.textPrimary },
+  fecha:       { ...Typography.small, color: Dark.textMuted, marginTop: 4, textTransform: 'capitalize' },
+  rolBadge:    { borderRadius: Radius.full, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1 },
+  rolText:     { fontSize: 12, fontWeight: '700' },
+  sectionTitle:{ ...Typography.label, color: Dark.textMuted, marginBottom: Spacing.md },
+  statsGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: Spacing.xl },
+  statCard:    { width: '47%', backgroundColor: Dark.bg2, borderRadius: Radius.lg, padding: Spacing.md, alignItems: 'center', borderWidth: 1 },
+  statEmoji:   { fontSize: 24, marginBottom: 6 },
+  statVal:     { fontSize: 26, fontWeight: '900' },
+  statLabel:   { ...Typography.small, color: Dark.textMuted, marginTop: 2, fontWeight: '600' },
+  navCard:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Dark.bg2, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Dark.border },
+  navTitulo:   { ...Typography.h4, color: Dark.textPrimary },
+  navDesc:     { ...Typography.small, color: Dark.textSecondary, marginTop: 3 },
+  hint:        { ...Typography.small, color: Dark.textMuted, textAlign: 'center', marginTop: Spacing.lg },
 });
 
 export default DashboardEmpleadoScreen;

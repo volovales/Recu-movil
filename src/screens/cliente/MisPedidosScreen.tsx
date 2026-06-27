@@ -1,108 +1,84 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import {
-    Alert,
-    FlatList,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from 'react-native';
+import { Alert, FlatList, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Pedido, cancelarPedido, obtenerDetallePedido, obtenerPedidosCliente } from '../../database/pedidosDB';
-
-const ESTADO_CONFIG: Record<string, { color: string; emoji: string; label: string }> = {
-  pendiente:      { color: '#feca57', emoji: '⏳', label: 'Pendiente' },
-  en_preparacion: { color: '#ff9f43', emoji: '👨‍🍳', label: 'En preparación' },
-  listo:          { color: '#00d4ff', emoji: '✅', label: 'Listo para recoger' },
-  entregado:      { color: '#26de81', emoji: '🍽️', label: 'Entregado' },
-  cancelado:      { color: '#ff6b6b', emoji: '❌', label: 'Cancelado' },
-};
+import { Dark, OrderStatus, Radius, Shadow, Spacing, Typography, Violet } from '../../theme';
 
 const MisPedidosScreen: React.FC = () => {
   const { usuario } = useAuth();
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
-  const [expandido, setExpandido] = useState<number | null>(null);
+  const [pedidos, setPedidos]   = useState<Pedido[]>([]);
+  const [expandido, setExp]     = useState<number | null>(null);
   const [detalles, setDetalles] = useState<Record<number, any[]>>({});
 
   useFocusEffect(useCallback(() => {
     if (usuario?.id) setPedidos(obtenerPedidosCliente(usuario.id));
   }, [usuario]));
 
-  const toggleDetalle = (id: number) => {
-    if (expandido === id) { setExpandido(null); return; }
-    setExpandido(id);
-    if (!detalles[id]) {
-      setDetalles(prev => ({ ...prev, [id]: obtenerDetallePedido(id) }));
-    }
+  const toggle = (id: number) => {
+    if (expandido === id) { setExp(null); return; }
+    setExp(id);
+    if (!detalles[id]) setDetalles(prev => ({ ...prev, [id]: obtenerDetallePedido(id) }));
   };
 
-  const handleCancelar = (id: number) => {
-    Alert.alert('Cancelar pedido', '¿Seguro que deseas cancelar este pedido?', [
+  const cancelar = (id: number) => {
+    Alert.alert('Cancelar pedido', '¿Seguro que deseas cancelar?', [
       { text: 'No', style: 'cancel' },
-      {
-        text: 'Sí, cancelar',
-        style: 'destructive',
-        onPress: () => {
-          const result = cancelarPedido(id);
-          if (!result.ok) { Alert.alert('Error', result.error); return; }
-          setPedidos(obtenerPedidosCliente(usuario!.id!));
-        },
-      },
+      { text: 'Sí, cancelar', style: 'destructive', onPress: () => {
+        const r = cancelarPedido(id);
+        if (!r.ok) { Alert.alert('Error', r.error); return; }
+        setPedidos(obtenerPedidosCliente(usuario!.id!));
+      }},
     ]);
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f2e" />
+    <View style={styles.screen}>
+      <StatusBar barStyle="light-content" backgroundColor={Dark.bg0} />
       <View style={styles.header}>
-        <Text style={styles.titulo}>Mis pedidos 📦</Text>
+        <Text style={styles.titulo}>Mis pedidos</Text>
         <Text style={styles.subtitulo}>{pedidos.length} pedidos realizados</Text>
       </View>
 
       <FlatList
         data={pedidos}
-        keyExtractor={item => String(item.id)}
+        keyExtractor={i => String(i.id)}
         contentContainerStyle={styles.lista}
+        showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
-          const config = ESTADO_CONFIG[item.estado] ?? ESTADO_CONFIG.pendiente;
-          const abierto = expandido === item.id;
+          const cfg = OrderStatus[item.estado] ?? OrderStatus.pendiente;
+          const open = expandido === item.id;
           return (
-            <View style={styles.card}>
-              <TouchableOpacity onPress={() => toggleDetalle(item.id!)} activeOpacity={0.8}>
-                <View style={styles.cardHeader}>
+            <View style={[styles.card, Shadow.sm]}>
+              <TouchableOpacity onPress={() => toggle(item.id!)} activeOpacity={0.8}>
+                <View style={styles.cardTop}>
                   <View>
                     <Text style={styles.pedidoId}>Pedido #{item.id}</Text>
-                    <Text style={styles.pedidoFecha}>
-                      {item.created_at ? new Date(item.created_at).toLocaleString('es-MX') : ''}
-                    </Text>
+                    <Text style={styles.fecha}>{item.created_at ? new Date(item.created_at).toLocaleString('es-MX') : ''}</Text>
                   </View>
-                  <View style={[styles.estadoBadge, { borderColor: config.color, backgroundColor: config.color + '22' }]}>
-                    <Text style={[styles.estadoText, { color: config.color }]}>
-                      {config.emoji} {config.label}
-                    </Text>
+                  <View style={[styles.estadoBadge, { backgroundColor: cfg.bg, borderColor: cfg.color + '55' }]}>
+                    <Text style={[styles.estadoText, { color: cfg.color }]}>{cfg.emoji} {cfg.label}</Text>
                   </View>
                 </View>
-
-                <View style={styles.cardFooter}>
-                  <Text style={styles.total}>${item.total.toFixed(2)}</Text>
-                  <Text style={styles.verDetalle}>{abierto ? '▲ Ocultar' : '▼ Ver detalle'}</Text>
+                <View style={styles.cardBottom}>
+                  <Text style={[styles.total, { color: Violet.primary }]}>${item.total.toFixed(2)}</Text>
+                  <Text style={styles.toggle}>{open ? '▲ Ocultar' : '▼ Ver detalle'}</Text>
                 </View>
               </TouchableOpacity>
 
-              {abierto && detalles[item.id!] && (
+              {open && detalles[item.id!] && (
                 <View style={styles.detalle}>
                   {detalles[item.id!].map((d, i) => (
                     <View key={i} style={styles.detalleRow}>
-                      <Text style={styles.detalleNombre}>{d.cantidad}x {d.nombre}</Text>
-                      <Text style={styles.detalleSubtotal}>${d.subtotal.toFixed(2)}</Text>
+                      <Text style={styles.detalleNombre}>{d.cantidad}× {d.nombre}</Text>
+                      <Text style={styles.detalleSub}>${d.subtotal.toFixed(2)}</Text>
                     </View>
                   ))}
                   {item.notas ? <Text style={styles.notas}>📝 {item.notas}</Text> : null}
                   {item.estado === 'pendiente' && (
-                    <TouchableOpacity style={styles.btnCancelar} onPress={() => handleCancelar(item.id!)}>
-                      <Text style={styles.btnCancelarText}>Cancelar pedido</Text>
+                    <TouchableOpacity style={[styles.btnCancelar, { borderColor: '#EF4444' }]}
+                      onPress={() => cancelar(item.id!)}>
+                      <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 13 }}>Cancelar pedido</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -111,10 +87,10 @@ const MisPedidosScreen: React.FC = () => {
           );
         }}
         ListEmptyComponent={
-          <View style={styles.vacio}>
-            <Text style={styles.vacioEmoji}>📭</Text>
-            <Text style={styles.vacioTexto}>Aún no has hecho ningún pedido</Text>
-            <Text style={styles.vacioSub}>Ve al menú y ordena algo 🍜</Text>
+          <View style={styles.empty}>
+            <Text style={{ fontSize: 52 }}>📭</Text>
+            <Text style={styles.emptyTitulo}>Sin pedidos aún</Text>
+            <Text style={styles.emptyDesc}>Ve al menú y ordena algo 🍜</Text>
           </View>
         }
       />
@@ -123,37 +99,29 @@ const MisPedidosScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f2e' },
-  header: { paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14 },
-  titulo: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  subtitulo: { color: '#666', fontSize: 13, marginTop: 2 },
-  lista: { padding: 16 },
-  card: {
-    backgroundColor: '#16213e', borderRadius: 12, padding: 14,
-    marginBottom: 12, borderWidth: 1, borderColor: '#2a2a6e',
-  },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
-  pedidoId: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  pedidoFecha: { color: '#666', fontSize: 12, marginTop: 2 },
-  estadoBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
-  estadoText: { fontSize: 12, fontWeight: '700' },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  total: { color: '#00d4ff', fontSize: 20, fontWeight: '800' },
-  verDetalle: { color: '#555', fontSize: 12 },
-  detalle: { borderTopWidth: 1, borderTopColor: '#1a1a4a', marginTop: 12, paddingTop: 12 },
-  detalleRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  detalleNombre: { color: '#ccc', fontSize: 13, flex: 1 },
-  detalleSubtotal: { color: '#aaa', fontSize: 13 },
-  notas: { color: '#666', fontSize: 12, fontStyle: 'italic', marginTop: 8 },
-  btnCancelar: {
-    borderWidth: 1, borderColor: '#ff6b6b', borderRadius: 8,
-    paddingVertical: 8, alignItems: 'center', marginTop: 12,
-  },
-  btnCancelarText: { color: '#ff6b6b', fontSize: 13, fontWeight: '600' },
-  vacio: { alignItems: 'center', paddingTop: 80 },
-  vacioEmoji: { fontSize: 52, marginBottom: 12 },
-  vacioTexto: { color: '#aaa', fontSize: 16, fontWeight: '600' },
-  vacioSub: { color: '#555', fontSize: 13, marginTop: 4 },
+  screen:    { flex: 1, backgroundColor: Dark.bg0 },
+  header:    { paddingHorizontal: Spacing.screenX, paddingTop: Spacing.screenH, paddingBottom: Spacing.md },
+  titulo:    { ...Typography.h1, color: Dark.textPrimary },
+  subtitulo: { ...Typography.body, color: Dark.textSecondary, marginTop: 2 },
+  lista:     { paddingHorizontal: Spacing.screenX, paddingBottom: 30 },
+  card:      { backgroundColor: Dark.bg2, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Dark.border },
+  cardTop:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.sm },
+  pedidoId:  { ...Typography.h4, color: Dark.textPrimary },
+  fecha:     { ...Typography.small, color: Dark.textMuted, marginTop: 3 },
+  estadoBadge: { borderRadius: Radius.sm, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
+  estadoText:{ fontSize: 12, fontWeight: '700' },
+  cardBottom:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  total:     { fontSize: 20, fontWeight: '900' },
+  toggle:    { ...Typography.small, color: Dark.textMuted },
+  detalle:   { borderTopWidth: 1, borderTopColor: Dark.divider, marginTop: Spacing.md, paddingTop: Spacing.md },
+  detalleRow:{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  detalleNombre: { ...Typography.body, color: Dark.textSecondary, flex: 1 },
+  detalleSub:{ ...Typography.body, color: Dark.textMuted },
+  notas:     { ...Typography.small, color: Dark.textMuted, fontStyle: 'italic', marginTop: 8 },
+  btnCancelar:{ borderWidth: 1, borderRadius: Radius.sm, paddingVertical: 8, alignItems: 'center', marginTop: Spacing.md },
+  empty:     { alignItems: 'center', paddingTop: 100, gap: 10 },
+  emptyTitulo:{ ...Typography.h3, color: Dark.textSecondary },
+  emptyDesc: { ...Typography.body, color: Dark.textMuted },
 });
 
 export default MisPedidosScreen;
