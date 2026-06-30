@@ -1,192 +1,142 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-    Alert,
-    ScrollView, StatusBar,
-    StyleSheet,
-    Text, TextInput, TouchableOpacity,
-    View,
+  Alert, KeyboardAvoidingView, Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text, TouchableOpacity,
+  View,
 } from 'react-native';
+import Button from '../../components/Button';
+import InputField from '../../components/InputField';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { registrarUsuario } from '../../database/usuariosDB';
+import { Radius, Shadow, Spacing, Typography } from '../../theme/themes';
 
-interface Props {
-  onIrLogin: () => void;
-}
+interface Props { onIrLogin: () => void; }
 
 const RegisterScreen: React.FC<Props> = ({ onIrLogin }) => {
   const { login } = useAuth();
-  const [nombre, setNombre] = useState('');
-  const [correo, setCorreo] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmar, setConfirmar] = useState('');
-  const [codigoEmpleado, setCodigoEmpleado] = useState('');
-  const [verPassword, setVerPassword] = useState(false);
-  const [mostrarCodigo, setMostrarCodigo] = useState(false);
-  const [errores, setErrores] = useState<Record<string, string>>({});
+  const { theme, mode } = useTheme();
+  const [nombre, setNombre]         = useState('');
+  const [correo, setCorreo]         = useState('');
+  const [password, setPassword]     = useState('');
+  const [confirmar, setConfirmar]   = useState('');
+  const [codigo, setCodigo]         = useState('');
+  const [mostrarCodigo, setMostrar] = useState(false);
+  const [errores, setErrores]       = useState<Record<string, string>>({});
 
   const validar = () => {
     const e: Record<string, string> = {};
-    if (!nombre.trim() || nombre.trim().length < 2)
-      e.nombre = 'Mínimo 2 caracteres';
-    if (!correo.trim())
-      e.correo = 'El correo es obligatorio';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo))
-      e.correo = 'Formato de correo inválido';
-    if (password.length < 6)
-      e.password = 'Mínimo 6 caracteres';
-    if (password !== confirmar)
-      e.confirmar = 'Las contraseñas no coinciden';
+    if (!nombre.trim() || nombre.trim().length < 2) e.nombre = 'Mínimo 2 caracteres';
+    if (!correo.trim()) e.correo = 'Obligatorio';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) e.correo = 'Formato inválido';
+    if (password.length < 6) e.password = 'Mínimo 6 caracteres';
+    if (password !== confirmar) e.confirmar = 'Las contraseñas no coinciden';
     setErrores(e);
     return Object.keys(e).length === 0;
   };
 
   const handleRegistro = () => {
     if (!validar()) return;
-    const result = registrarUsuario(nombre, correo, password, codigoEmpleado || undefined);
-    if (!result.ok) {
-      Alert.alert('Error al registrar', result.error);
-      return;
-    }
-    const rol = result.usuario?.rol === 'empleado' ? 'empleado' : 'cliente';
+    const result = registrarUsuario(nombre, correo, password, codigo || undefined);
+    if (!result.ok) { Alert.alert('Error', result.error); return; }
     Alert.alert(
-      '¡Registro exitoso! 🎉',
-      `Bienvenido ${result.usuario?.nombre}. Tu cuenta fue creada como ${rol}.`,
+      'Cuenta creada',
+      `Bienvenido, ${result.usuario?.nombre}`,
       [{ text: 'Continuar', onPress: () => login(result.usuario!) }]
     );
   };
 
-  const Field = ({
-    label, value, onChange, placeholder, error, secure, keyboard, autoCapitalize,
-  }: {
-    label: string; value: string; onChange: (t: string) => void;
-    placeholder: string; error?: string; secure?: boolean;
-    keyboard?: any; autoCapitalize?: any;
-  }) => (
-    <View style={{ marginBottom: 4 }}>
-      <Text style={styles.label}>{label} <Text style={styles.req}>*</Text></Text>
-      <TextInput
-        style={[styles.input, error && styles.inputError]}
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor="#555"
-        secureTextEntry={secure}
-        keyboardType={keyboard}
-        autoCapitalize={autoCapitalize ?? 'words'}
-        autoCorrect={false}
-      />
-      {error && <Text style={styles.errorText}>{error}</Text>}
-    </View>
-  );
-
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f2e" />
-
-      <View style={styles.header}>
-        <Text style={styles.logo}>🍽️</Text>
-        <Text style={styles.titulo}>Crear cuenta</Text>
-        <Text style={styles.subtitulo}>Restaurante El Sabor</Text>
-      </View>
-
-      <Field label="Nombre completo" value={nombre} onChange={setNombre}
-        placeholder="Ej. Juan García" error={errores.nombre} />
-
-      <Field label="Correo electrónico" value={correo} onChange={setCorreo}
-        placeholder="tu@correo.com" error={errores.correo}
-        keyboard="email-address" autoCapitalize="none" />
-
-      <Text style={styles.label}>Contraseña <Text style={styles.req}>*</Text></Text>
-      <View style={styles.passwordRow}>
-        <TextInput
-          style={[styles.input, styles.inputFlex, errores.password && styles.inputError]}
-          value={password} onChangeText={setPassword}
-          placeholder="Mínimo 6 caracteres" placeholderTextColor="#555"
-          secureTextEntry={!verPassword}
-        />
-        <TouchableOpacity style={styles.eyeBtn} onPress={() => setVerPassword(!verPassword)}>
-          <Text>{verPassword ? '🙈' : '👁️'}</Text>
-        </TouchableOpacity>
-      </View>
-      {errores.password && <Text style={styles.errorText}>{errores.password}</Text>}
-
-      <Field label="Confirmar contraseña" value={confirmar} onChange={setConfirmar}
-        placeholder="Repite tu contraseña" error={errores.confirmar} secure={!verPassword}
-        autoCapitalize="none" />
-
-      {/* Código empleado (opcional, colapsable) */}
-      <TouchableOpacity
-        style={styles.codigoToggle}
-        onPress={() => setMostrarCodigo(!mostrarCodigo)}
+    <KeyboardAvoidingView
+      style={[styles.flex, { backgroundColor: theme.bg.screen }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <StatusBar
+        barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.bg.screen}
+      />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.codigoToggleText}>
-          {mostrarCodigo ? '▼' : '▶'} ¿Eres empleado? Ingresa tu código
-        </Text>
-      </TouchableOpacity>
-
-      {mostrarCodigo && (
-        <View style={{ marginBottom: 4 }}>
-          <TextInput
-            style={styles.input}
-            value={codigoEmpleado}
-            onChangeText={setCodigoEmpleado}
-            placeholder="Código de empleado"
-            placeholderTextColor="#555"
-            autoCapitalize="characters"
-          />
-          <Text style={styles.hint}>
-            Si el código es correcto, tu cuenta tendrá acceso de empleado.
-          </Text>
+        {/* Logo */}
+        <View style={styles.hero}>
+          <View style={[styles.logoWrap, { backgroundColor: theme.bg.card, borderColor: theme.accent.primary + '40' }]}>
+            <Ionicons name="person-add-outline" size={30} color={theme.accent.primary} />
+          </View>
+          <Text style={[styles.titulo, { color: theme.text.primary }]}>Crear cuenta</Text>
+          <Text style={[styles.sub, { color: theme.text.muted }]}>Restaurante El Sabor</Text>
         </View>
-      )}
 
-      <TouchableOpacity style={styles.btnRegistro} onPress={handleRegistro}>
-        <Text style={styles.btnRegistroText}>Crear cuenta</Text>
-      </TouchableOpacity>
+        <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }, Shadow.card]}>
+          <InputField label="Nombre completo" value={nombre} onChangeText={setNombre}
+            placeholder="Juan García" error={errores.nombre} required icon="👤" />
+          <InputField label="Correo electrónico" value={correo} onChangeText={setCorreo}
+            placeholder="tu@correo.com" keyboardType="email-address" autoCapitalize="none"
+            error={errores.correo} required icon="✉️" />
+          <InputField label="Contraseña" value={password} onChangeText={setPassword}
+            placeholder="Mínimo 6 caracteres" isPassword error={errores.password} required icon="🔒" />
+          <InputField label="Confirmar contraseña" value={confirmar} onChangeText={setConfirmar}
+            placeholder="Repite tu contraseña" isPassword error={errores.confirmar} required icon="🔒" />
 
-      <View style={styles.loginRow}>
-        <Text style={styles.loginTexto}>¿Ya tienes cuenta? </Text>
-        <TouchableOpacity onPress={onIrLogin}>
-          <Text style={styles.loginLink}>Inicia sesión</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          {/* Sección empleado colapsable */}
+          <TouchableOpacity
+            style={[styles.empToggle, { borderColor: theme.secondary.primary + '40', backgroundColor: theme.secondary.subtle }]}
+            onPress={() => setMostrar(!mostrarCodigo)}
+          >
+            <Ionicons name="briefcase-outline" size={16} color={theme.secondary.light} />
+            <Text style={[styles.empToggleText, { color: theme.secondary.light }]}>
+              ¿Eres empleado?
+            </Text>
+            <Ionicons
+              name={mostrarCodigo ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color={theme.secondary.light}
+              style={{ marginLeft: 'auto' }}
+            />
+          </TouchableOpacity>
+
+          {mostrarCodigo && (
+            <InputField
+              label="Código de empleado" value={codigo} onChangeText={setCodigo}
+              placeholder="EMPLEADO2025" autoCapitalize="characters" icon="🔑"
+            />
+          )}
+
+          <View style={{ height: Spacing.sm }} />
+          <Button label="Crear cuenta" onPress={handleRegistro} style={styles.btn} />
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: theme.text.muted }]}>¿Ya tienes cuenta? </Text>
+          <TouchableOpacity onPress={onIrLogin}>
+            <Text style={[styles.footerLink, { color: theme.accent.primary }]}>Inicia sesión</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f2e' },
-  content: { padding: 28, paddingTop: 60, paddingBottom: 40 },
-  header: { alignItems: 'center', marginBottom: 32 },
-  logo: { fontSize: 48, marginBottom: 10 },
-  titulo: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  subtitulo: { color: '#666', fontSize: 14, marginTop: 4 },
-  label: { color: '#ccc', fontSize: 13, fontWeight: '600', marginBottom: 6, marginTop: 12 },
-  req: { color: '#00d4ff' },
-  input: {
-    backgroundColor: '#16213e', color: '#fff', borderRadius: 10,
-    paddingHorizontal: 16, paddingVertical: 13, fontSize: 15,
-    borderWidth: 1, borderColor: '#2a2a6e',
-  },
-  inputFlex: { flex: 1 },
-  inputError: { borderColor: '#ff6b6b' },
-  passwordRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  eyeBtn: {
-    backgroundColor: '#16213e', borderRadius: 10, padding: 13,
-    borderWidth: 1, borderColor: '#2a2a6e',
-  },
-  errorText: { color: '#ff6b6b', fontSize: 12, marginTop: 4 },
-  codigoToggle: { marginTop: 16, marginBottom: 10 },
-  codigoToggleText: { color: '#00d4ff', fontSize: 13, fontWeight: '600' },
-  hint: { color: '#555', fontSize: 11, marginTop: 6 },
-  btnRegistro: {
-    backgroundColor: '#00d4ff', borderRadius: 12,
-    paddingVertical: 15, alignItems: 'center', marginTop: 24,
-  },
-  btnRegistroText: { color: '#0f0f2e', fontSize: 16, fontWeight: '800' },
-  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
-  loginTexto: { color: '#666', fontSize: 14 },
-  loginLink: { color: '#00d4ff', fontSize: 14, fontWeight: '700' },
+  flex:          { flex: 1 },
+  content:       { padding: Spacing.screenX, paddingTop: 56, paddingBottom: 40 },
+  hero:          { alignItems: 'center', marginBottom: Spacing.xl },
+  logoWrap:      { width: 76, height: 76, borderRadius: 38, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.md },
+  titulo:        { ...Typography.h2, marginBottom: 4 },
+  sub:           { ...Typography.small, letterSpacing: 0.8 },
+  card:          { borderRadius: Radius.xl, padding: Spacing.lg, borderWidth: 1, marginBottom: Spacing.lg },
+  empToggle:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1, marginBottom: Spacing.md },
+  empToggleText: { ...Typography.h4 },
+  btn:           { marginTop: Spacing.sm },
+  footer:        { flexDirection: 'row', justifyContent: 'center' },
+  footerText:    { ...Typography.body },
+  footerLink:    { ...Typography.body, fontWeight: '700' },
 });
 
 export default RegisterScreen;

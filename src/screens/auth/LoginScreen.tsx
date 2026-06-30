@@ -1,149 +1,136 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-    Alert,
-    ScrollView, StatusBar,
-    StyleSheet,
-    Text, TextInput, TouchableOpacity,
-    View,
+  Alert, KeyboardAvoidingView, Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text, TouchableOpacity,
+  View,
 } from 'react-native';
+import Button from '../../components/Button';
+import InputField from '../../components/InputField';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { loginUsuario } from '../../database/usuariosDB';
+import { Radius, Shadow, Spacing, Typography } from '../../theme/themes';
 
-interface Props {
-  onIrRegistro: () => void;
-}
+interface Props { onIrRegistro: () => void; }
 
 const LoginScreen: React.FC<Props> = ({ onIrRegistro }) => {
   const { login } = useAuth();
-  const [correo, setCorreo] = useState('');
+  const { theme, mode } = useTheme();
+  const [correo, setCorreo]     = useState('');
   const [password, setPassword] = useState('');
-  const [verPassword, setVerPassword] = useState(false);
-  const [errores, setErrores] = useState<{ correo?: string; password?: string }>({});
-  const [cargando, setCargando] = useState(false);
+  const [errores, setErrores]   = useState<Record<string, string>>({});
+  const [loading, setLoading]   = useState(false);
 
   const validar = () => {
-    const e: { correo?: string; password?: string } = {};
-    if (!correo.trim()) e.correo = 'Ingresa tu correo';
-    if (!password.trim()) e.password = 'Ingresa tu contraseña';
+    const e: Record<string, string> = {};
+    if (!correo.trim())   e.correo   = 'El correo es obligatorio';
+    if (!password.trim()) e.password = 'La contraseña es obligatoria';
     setErrores(e);
     return Object.keys(e).length === 0;
   };
 
   const handleLogin = () => {
     if (!validar()) return;
-    setCargando(true);
-    const result = loginUsuario(correo, password);
-    setCargando(false);
-    if (!result.ok) {
-      Alert.alert('Error', result.error);
-      return;
-    }
-    login(result.usuario!);
+    setLoading(true);
+    setTimeout(() => {
+      const result = loginUsuario(correo.trim(), password);
+      setLoading(false);
+      if (!result.ok) { Alert.alert('Acceso denegado', result.error); return; }
+      login(result.usuario!);
+    }, 350);
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f2e" />
-
-      <View style={styles.header}>
-        <Text style={styles.logo}>🍽️</Text>
-        <Text style={styles.titulo}>Restaurante El Sabor</Text>
-        <Text style={styles.subtitulo}>Inicia sesión para continuar</Text>
-      </View>
-
-      <View style={styles.form}>
-        <Text style={styles.label}>Correo electrónico <Text style={styles.req}>*</Text></Text>
-        <TextInput
-          style={[styles.input, errores.correo && styles.inputError]}
-          value={correo}
-          onChangeText={setCorreo}
-          placeholder="tu@correo.com"
-          placeholderTextColor="#555"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {errores.correo && <Text style={styles.errorText}>{errores.correo}</Text>}
-
-        <Text style={styles.label}>Contraseña <Text style={styles.req}>*</Text></Text>
-        <View style={styles.passwordRow}>
-          <TextInput
-            style={[styles.input, styles.inputFlex, errores.password && styles.inputError]}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••"
-            placeholderTextColor="#555"
-            secureTextEntry={!verPassword}
-          />
-          <TouchableOpacity style={styles.eyeBtn} onPress={() => setVerPassword(!verPassword)}>
-            <Text style={styles.eyeIcon}>{verPassword ? '🙈' : '👁️'}</Text>
-          </TouchableOpacity>
+    <KeyboardAvoidingView
+      style={[styles.flex, { backgroundColor: theme.bg.screen }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <StatusBar
+        barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.bg.screen}
+      />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Logo */}
+        <View style={styles.hero}>
+          <View style={[styles.logoWrap, { backgroundColor: theme.bg.card, borderColor: theme.accent.primary + '40' }, Shadow.sm]}>
+            <Ionicons name="restaurant" size={36} color={theme.accent.primary} />
+          </View>
+          <Text style={[styles.appName, { color: theme.text.primary }]}>El Sabor</Text>
+          <Text style={[styles.tagline, { color: theme.text.muted }]}>Alta cocina · Experiencia premium</Text>
         </View>
-        {errores.password && <Text style={styles.errorText}>{errores.password}</Text>}
 
-        <TouchableOpacity
-          style={[styles.btnLogin, cargando && styles.btnDisabled]}
-          onPress={handleLogin}
-          disabled={cargando}
-        >
-          <Text style={styles.btnLoginText}>{cargando ? 'Entrando…' : 'Iniciar sesión'}</Text>
-        </TouchableOpacity>
+        {/* Formulario */}
+        <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }, Shadow.card]}>
+          <Text style={[styles.cardTitle, { color: theme.text.primary }]}>Bienvenido de vuelta</Text>
+          <Text style={[styles.cardSub, { color: theme.text.muted }]}>Inicia sesión para continuar</Text>
 
-        <View style={styles.registroRow}>
-          <Text style={styles.registroTexto}>¿No tienes cuenta? </Text>
+          <View style={styles.fields}>
+            <InputField
+              label="Correo electrónico" value={correo} onChangeText={setCorreo}
+              placeholder="tu@correo.com" keyboardType="email-address"
+              autoCapitalize="none" autoCorrect={false}
+              error={errores.correo} required icon="✉️"
+            />
+            <InputField
+              label="Contraseña" value={password} onChangeText={setPassword}
+              placeholder="••••••••" isPassword
+              error={errores.password} required icon="🔒"
+            />
+          </View>
+
+          <Button label="Iniciar sesión" onPress={handleLogin} loading={loading} style={styles.btn} />
+        </View>
+
+        {/* Registro */}
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: theme.text.muted }]}>¿No tienes cuenta? </Text>
           <TouchableOpacity onPress={onIrRegistro}>
-            <Text style={styles.registroLink}>Regístrate aquí</Text>
+            <Text style={[styles.footerLink, { color: theme.accent.primary }]}>Regístrate aquí</Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </ScrollView>
+
+        {/* Hint empleado */}
+        <View style={[styles.hint, { backgroundColor: theme.bg.card, borderColor: theme.border.subtle }]}>
+          <Ionicons name="briefcase-outline" size={20} color={theme.secondary.light} />
+          <View style={styles.hintText}>
+            <Text style={[styles.hintTitle, { color: theme.secondary.light }]}>¿Eres empleado?</Text>
+            <Text style={[styles.hintDesc, { color: theme.text.muted }]}>
+              Regístrate con el código de empleado para acceder al panel de gestión.
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f2e' },
-  content: { padding: 28, paddingTop: 80, flexGrow: 1, justifyContent: 'center' },
-  header: { alignItems: 'center', marginBottom: 40 },
-  logo: { fontSize: 60, marginBottom: 12 },
-  titulo: { color: '#fff', fontSize: 24, fontWeight: '800', letterSpacing: 0.5 },
-  subtitulo: { color: '#666', fontSize: 14, marginTop: 6 },
-  form: { gap: 4 },
-  label: { color: '#ccc', fontSize: 13, fontWeight: '600', marginBottom: 6, marginTop: 12 },
-  req: { color: '#00d4ff' },
-  input: {
-    backgroundColor: '#16213e',
-    color: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#2a2a6e',
-  },
-  inputError: { borderColor: '#ff6b6b' },
-  inputFlex: { flex: 1 },
-  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  eyeBtn: {
-    backgroundColor: '#16213e',
-    borderRadius: 10,
-    padding: 13,
-    borderWidth: 1,
-    borderColor: '#2a2a6e',
-  },
-  eyeIcon: { fontSize: 18 },
-  errorText: { color: '#ff6b6b', fontSize: 12, marginTop: 4 },
-  btnLogin: {
-    backgroundColor: '#00d4ff',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  btnDisabled: { opacity: 0.6 },
-  btnLoginText: { color: '#0f0f2e', fontSize: 16, fontWeight: '800' },
-  registroRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
-  registroTexto: { color: '#666', fontSize: 14 },
-  registroLink: { color: '#00d4ff', fontSize: 14, fontWeight: '700' },
+  flex:      { flex: 1 },
+  content:   { padding: Spacing.screenX, paddingTop: 64, paddingBottom: 40 },
+  hero:      { alignItems: 'center', marginBottom: Spacing.xl },
+  logoWrap:  { width: 86, height: 86, borderRadius: 43, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.md },
+  appName:   { ...Typography.h1, marginBottom: 4 },
+  tagline:   { ...Typography.small, letterSpacing: 1 },
+  card:      { borderRadius: Radius.xl, padding: Spacing.lg, borderWidth: 1, marginBottom: Spacing.lg },
+  cardTitle: { ...Typography.h3, marginBottom: 4 },
+  cardSub:   { ...Typography.body, marginBottom: Spacing.lg },
+  fields:    { marginBottom: Spacing.sm },
+  btn:       { marginTop: Spacing.sm },
+  footer:    { flexDirection: 'row', justifyContent: 'center', marginBottom: Spacing.lg },
+  footerText:{ ...Typography.body },
+  footerLink:{ ...Typography.body, fontWeight: '700' },
+  hint:      { flexDirection: 'row', gap: Spacing.md, padding: Spacing.md, borderRadius: Radius.lg, borderWidth: 1, alignItems: 'flex-start' },
+  hintText:  { flex: 1 },
+  hintTitle: { ...Typography.h4, marginBottom: 3 },
+  hintDesc:  { ...Typography.small, lineHeight: 18 },
 });
 
 export default LoginScreen;

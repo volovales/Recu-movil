@@ -1,44 +1,48 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
-import { Radius, Typography } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import { Radius, Typography } from '../theme/themes';
 
 interface ButtonProps {
   label: string;
   onPress: () => void;
-  color?: string;
-  variant?: 'solid' | 'outline' | 'ghost';
+  variant?: 'solid' | 'outline' | 'ghost' | 'danger';
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 const Button: React.FC<ButtonProps> = ({
-  label, onPress, color = '#9303C5',
-  variant = 'solid', loading, disabled, style,
+  label, onPress, variant = 'solid', loading, disabled, style, size = 'md',
 }) => {
-  const isSolid = variant === 'solid';
-  const isOutline = variant === 'outline';
+  const { theme } = useTheme();
+  const color = variant === 'danger' ? theme.status.error : theme.accent.primary;
+
+  const pad = size === 'sm' ? 9 : size === 'lg' ? 18 : 14;
 
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.75}
+      activeOpacity={0.78}
       style={[
         styles.base,
-        isSolid  && { backgroundColor: color },
-        isOutline && { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: color },
-        variant === 'ghost' && { backgroundColor: 'transparent' },
-        (disabled || loading) && styles.disabled,
+        { paddingVertical: pad, borderRadius: Radius.md },
+        variant === 'solid'   && { backgroundColor: color },
+        variant === 'danger'  && { backgroundColor: color },
+        variant === 'outline' && { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: color },
+        variant === 'ghost'   && { backgroundColor: 'transparent' },
+        (disabled || loading) && { opacity: 0.45 },
         style,
       ]}
     >
       {loading
-        ? <ActivityIndicator color={isSolid ? '#fff' : color} size="small" />
+        ? <ActivityIndicator color={variant === 'solid' || variant === 'danger' ? '#fff' : color} size="small" />
         : <Text style={[
             styles.label,
-            isSolid  && { color: '#fff' },
-            !isSolid && { color: color },
+            { color: variant === 'solid' || variant === 'danger' ? '#fff' : color },
+            size === 'sm' && { fontSize: 13 },
           ]}>
             {label}
           </Text>
@@ -48,12 +52,8 @@ const Button: React.FC<ButtonProps> = ({
 };
 
 const styles = StyleSheet.create({
-  base: {
-    borderRadius: Radius.md, paddingVertical: 15,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  label:   { ...Typography.h4, letterSpacing: 0.5 },
-  disabled: { opacity: 0.5 },
+  base:  { alignItems: 'center', justifyContent: 'center' },
+  label: { ...Typography.h4, letterSpacing: 0.3 },
 });
 
 export default Button;

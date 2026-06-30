@@ -1,72 +1,103 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Alert, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import AvatarPicker from '../../components/AvatarPicker';
+import Button from '../../components/Button';
+import ThemeToggle from '../../components/ThemeToggle';
 import { useAuth } from '../../context/AuthContext';
-import { Crimson, Dark, Radius, Shadow, Spacing, Typography } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import { Radius, Shadow, Spacing, Typography } from '../../theme/themes';
 
 const CuentaEmpleadoScreen: React.FC = () => {
-  const { usuario, logout } = useAuth();
-
-  const handleLogout = () =>
-    Alert.alert('Cerrar sesión', '¿Seguro que deseas salir?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Salir', style: 'destructive', onPress: logout },
-    ]);
+  const { usuario, logout, updateAvatar } = useAuth();
+  const { theme, mode } = useTheme();
 
   const rows = [
-    { label: 'Nombre', val: usuario?.nombre ?? '' },
-    { label: 'Correo', val: usuario?.correo ?? '' },
-    { label: 'Rol',    val: 'Empleado' },
-    { label: 'Acceso', val: 'Menú + Pedidos + Dashboard' },
-    { label: 'Desde',  val: usuario?.created_at ? new Date(usuario.created_at).toLocaleDateString('es-MX') : 'N/A' },
+    { icon: 'person-outline',   label: 'Nombre', val: usuario?.nombre ?? '' },
+    { icon: 'mail-outline',     label: 'Correo', val: usuario?.correo ?? '' },
+    { icon: 'briefcase-outline',label: 'Rol',    val: 'Empleado' },
+    { icon: 'key-outline',      label: 'Acceso', val: 'Completo' },
+    { icon: 'calendar-outline', label: 'Desde',  val: usuario?.created_at ? new Date(usuario.created_at).toLocaleDateString('es-MX') : 'N/A' },
   ];
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <StatusBar barStyle="light-content" backgroundColor={Dark.bg0} />
+    <ScrollView
+      style={[styles.screen, { backgroundColor: theme.bg.screen }]}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <StatusBar barStyle={mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.bg.screen} />
 
-      <View style={styles.avatarArea}>
-        <View style={[styles.avatar, { borderColor: Crimson.primary + '55' }]}>
-          <Text style={styles.avatarEmoji}>👔</Text>
-        </View>
-        <Text style={styles.nombre}>{usuario?.nombre}</Text>
-        <Text style={styles.correo}>{usuario?.correo}</Text>
-        <View style={[styles.rolBadge, { backgroundColor: Crimson.subtle, borderColor: Crimson.primary + '55' }]}>
-          <Text style={[styles.rolText, { color: Crimson.light }]}>👔 Empleado</Text>
+      <View style={[styles.headerBg, { backgroundColor: theme.accent.subtle }]}>
+        <AvatarPicker uri={usuario?.avatar} name={usuario?.nombre} size={96} onImageSelected={updateAvatar} />
+        <Text style={[styles.nombre, { color: theme.text.primary }]}>{usuario?.nombre}</Text>
+        <Text style={[styles.correo, { color: theme.text.secondary }]}>{usuario?.correo}</Text>
+        <View style={[styles.rolBadge, { backgroundColor: theme.accent.primary }]}>
+          <Text style={[styles.rolText, { color: '#fff' }]}>Empleado</Text>
         </View>
       </View>
 
-      <View style={[styles.infoCard, Shadow.sm]}>
+      <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.default }, Shadow.sm]}>
+        <View style={styles.sectionRow}>
+          <View style={styles.sectionLeft}>
+            <Ionicons name={mode === 'dark' ? 'moon-outline' : 'sunny-outline'} size={18} color={theme.accent.primary} />
+            <View>
+              <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>
+                Modo {mode === 'dark' ? 'oscuro' : 'claro'}
+              </Text>
+              <Text style={[styles.sectionSub, { color: theme.text.muted }]}>Se guarda en tu cuenta</Text>
+            </View>
+          </View>
+          <ThemeToggle userId={usuario?.id} />
+        </View>
+      </View>
+
+      <View style={[styles.infoCard, { backgroundColor: theme.bg.card, borderColor: theme.border.default }, Shadow.sm]}>
+        <Text style={[styles.infoTitle, { color: theme.text.muted }]}>INFORMACIÓN DE CUENTA</Text>
         {rows.map((r, i) => (
-          <View key={i} style={[styles.infoRow, i === rows.length - 1 && { borderBottomWidth: 0 }]}>
-            <Text style={styles.infoLabel}>{r.label}</Text>
-            <Text style={styles.infoVal} numberOfLines={1}>{r.val}</Text>
+          <View key={i} style={[styles.infoRow, i < rows.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border.subtle }]}>
+            <View style={styles.infoLeft}>
+              <Ionicons name={r.icon as any} size={15} color={theme.text.muted} />
+              <Text style={[styles.infoLabel, { color: theme.text.secondary }]}>{r.label}</Text>
+            </View>
+            <Text style={[styles.infoVal, { color: theme.text.primary }]} numberOfLines={1}>{r.val}</Text>
           </View>
         ))}
       </View>
 
-      <TouchableOpacity style={styles.btnLogout} onPress={handleLogout}>
-        <Text style={styles.btnLogoutText}>🚪  Cerrar sesión</Text>
-      </TouchableOpacity>
+      <Button
+        label="Cerrar sesión"
+        onPress={() => Alert.alert('Cerrar sesión', '¿Seguro que deseas salir?', [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Salir', style: 'destructive', onPress: logout },
+        ])}
+        variant="outline"
+        style={styles.logoutBtn}
+      />
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  screen:    { flex: 1, backgroundColor: Dark.bg0 },
-  content:   { padding: Spacing.screenX, paddingTop: Spacing.screenH, alignItems: 'center', paddingBottom: 40 },
-  avatarArea:{ alignItems: 'center', marginBottom: Spacing.xl },
-  avatar:    { width: 90, height: 90, borderRadius: 45, backgroundColor: Dark.bg2, borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.md },
-  avatarEmoji: { fontSize: 42 },
-  nombre:    { ...Typography.h2, color: Dark.textPrimary },
-  correo:    { ...Typography.body, color: Dark.textSecondary, marginTop: 4 },
-  rolBadge:  { borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, marginTop: Spacing.sm },
-  rolText:   { fontSize: 12, fontWeight: '700' },
-  infoCard:  { backgroundColor: Dark.bg2, borderRadius: Radius.xl, width: '100%', padding: Spacing.md, borderWidth: 1, borderColor: Dark.border, marginBottom: Spacing.xl },
-  infoRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Dark.divider },
-  infoLabel: { ...Typography.body, color: Dark.textSecondary },
-  infoVal:   { ...Typography.body, color: Dark.textPrimary, fontWeight: '600', flex: 1, textAlign: 'right', marginLeft: 12 },
-  btnLogout: { width: '100%', borderWidth: 1.5, borderColor: '#EF4444', borderRadius: Radius.md, paddingVertical: 15, alignItems: 'center' },
-  btnLogoutText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
+  screen:       { flex: 1 },
+  content:      { paddingBottom: 40 },
+  headerBg:     { alignItems: 'center', paddingTop: Spacing.screenT, paddingBottom: Spacing.xl, paddingHorizontal: Spacing.screenX, gap: Spacing.sm },
+  nombre:       { ...Typography.h2, marginTop: Spacing.sm },
+  correo:       { ...Typography.body },
+  rolBadge:     { borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 5, marginTop: 4 },
+  rolText:      { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+  section:      { marginHorizontal: Spacing.screenX, marginTop: Spacing.md, borderRadius: Radius.lg, padding: Spacing.md, borderWidth: 1 },
+  sectionRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionLeft:  { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  sectionLabel: { ...Typography.h4 },
+  sectionSub:   { ...Typography.small, marginTop: 2 },
+  infoCard:     { marginHorizontal: Spacing.screenX, marginTop: Spacing.md, borderRadius: Radius.lg, padding: Spacing.md, borderWidth: 1 },
+  infoTitle:    { ...Typography.label, marginBottom: Spacing.md },
+  infoRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13 },
+  infoLeft:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  infoLabel:    { ...Typography.body },
+  infoVal:      { ...Typography.body, fontWeight: '600', flex: 1, textAlign: 'right', marginLeft: 12 },
+  logoutBtn:    { marginHorizontal: Spacing.screenX, marginTop: Spacing.lg },
 });
 
 export default CuentaEmpleadoScreen;

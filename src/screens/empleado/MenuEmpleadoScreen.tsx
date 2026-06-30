@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import {
@@ -14,17 +15,20 @@ import {
 } from 'react-native';
 import Button from '../../components/Button';
 import InputField from '../../components/InputField';
+import { useTheme } from '../../context/ThemeContext';
 import { Platillo, actualizarPlatillo, crearPlatillo, eliminarPlatillo, obtenerPlatillos } from '../../database/platillosDB';
-import { Crimson, Dark, Radius, Shadow, Spacing, Typography } from '../../theme';
+import { Radius, Shadow, Spacing, Typography } from '../../theme/themes';
 
 const CATEGORIAS = ['Tacos', 'Entradas', 'Sopas', 'Bebidas', 'Postres', 'Otros'];
-const CAT_EMOJI: Record<string, string> = {
-  Tacos: '🌮', Entradas: '🥗', Sopas: '🍲', Bebidas: '🥤', Postres: '🍮', Otros: '🍽️',
+const CAT_ICON: Record<string, any> = {
+  Tacos: 'restaurant-outline', Entradas: 'leaf-outline', Sopas: 'flame-outline',
+  Bebidas: 'wine-outline', Postres: 'ice-cream-outline', Otros: 'ellipsis-horizontal-outline',
 };
 
 interface Errs { nombre?: string; descripcion?: string; precio?: string; }
 
 const MenuEmpleadoScreen: React.FC = () => {
+  const { theme, mode } = useTheme();
   const [platillos, setPlatillos]   = useState<Platillo[]>([]);
   const [catActiva, setCatActiva]   = useState('Tacos');
   const [modal, setModal]           = useState(false);
@@ -69,83 +73,89 @@ const MenuEmpleadoScreen: React.FC = () => {
     setModal(false); cargar();
   };
 
-  const eliminar = (id: number, nombre: string) => {
-    Alert.alert('Eliminar', `¿Eliminar "${nombre}"?`, [
+  const eliminar = (id: number, nom: string) => {
+    Alert.alert('Eliminar platillo', `¿Eliminar "${nom}" del menú?`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: () => { eliminarPlatillo(id); cargar(); } },
     ]);
   };
 
   return (
-    <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={Dark.bg0} />
+    <View style={[styles.screen, { backgroundColor: theme.bg.screen }]}>
+      <StatusBar barStyle={mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.bg.screen} />
 
       <View style={styles.header}>
         <View>
-          <Text style={styles.titulo}>Menú</Text>
-          <Text style={styles.subtitulo}>{platillos.length} platillos registrados</Text>
+          <Text style={[styles.titulo, { color: theme.text.primary }]}>Menú</Text>
+          <Text style={[styles.subtitulo, { color: theme.text.secondary }]}>{platillos.length} platillos registrados</Text>
         </View>
-        <TouchableOpacity style={[styles.btnAdd, { backgroundColor: Crimson.primary }]} onPress={abrirNuevo}>
-          <Text style={styles.btnAddText}>+ Agregar</Text>
+        <TouchableOpacity style={[styles.btnAdd, { backgroundColor: theme.accent.primary }]} onPress={abrirNuevo}>
+          <Ionicons name="add" size={18} color="#fff" />
+          <Text style={styles.btnAddText}>Agregar</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Tabs categoría */}
+      {/* Tabs categoría — altura fija igual que en MenuCliente */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs} contentContainerStyle={{ paddingHorizontal: Spacing.screenX }}>
         {CATEGORIAS.map(cat => {
           const cnt = platillos.filter(p => p.categoria === cat).length;
           const active = catActiva === cat;
           return (
             <TouchableOpacity key={cat}
-              style={[styles.tab, active && { backgroundColor: Crimson.subtle, borderColor: Crimson.primary }]}
+              style={[styles.tab, { backgroundColor: theme.bg.card, borderColor: theme.border.default },
+                active && { backgroundColor: theme.accent.subtle, borderColor: theme.accent.primary }]}
               onPress={() => setCatActiva(cat)}>
-              <Text style={styles.tabEmoji}>{CAT_EMOJI[cat]}</Text>
-              <Text style={[styles.tabText, active && { color: Crimson.primary }]}>{cat}</Text>
-              {cnt > 0 && <View style={[styles.tabCnt, { backgroundColor: active ? Crimson.primary : Dark.bg3 }]}>
-                <Text style={[styles.tabCntText, { color: active ? '#fff' : Dark.textMuted }]}>{cnt}</Text>
-              </View>}
+              <Ionicons name={CAT_ICON[cat]} size={13} color={active ? theme.accent.primary : theme.text.muted} />
+              <Text style={[styles.tabText, { color: active ? theme.accent.primary : theme.text.secondary }, active && { fontWeight: '700' }]}>{cat}</Text>
+              {cnt > 0 && (
+                <View style={[styles.tabCnt, { backgroundColor: active ? theme.accent.primary : theme.bg.input }]}>
+                  <Text style={[styles.tabCntText, { color: active ? '#fff' : theme.text.muted }]}>{cnt}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      {/* Lista */}
       <FlatList
         data={filtrados}
         keyExtractor={i => String(i.id)}
         contentContainerStyle={styles.lista}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <View style={[styles.card, Shadow.sm]}>
+          <View style={[styles.card, { backgroundColor: theme.bg.card, borderColor: theme.border.default }, Shadow.sm]}>
             <View style={styles.cardTop}>
               <View style={styles.cardInfo}>
-                <Text style={styles.platNombre}>{item.nombre}</Text>
-                <Text style={styles.platDesc} numberOfLines={2}>{item.descripcion}</Text>
-                <Text style={[styles.platPrecio, { color: Crimson.primary }]}>${item.precio.toFixed(2)}</Text>
+                <Text style={[styles.platNombre, { color: theme.text.primary }]}>{item.nombre}</Text>
+                <Text style={[styles.platDesc, { color: theme.text.secondary }]} numberOfLines={2}>{item.descripcion}</Text>
+                <Text style={[styles.platPrecio, { color: theme.accent.primary }]}>${item.precio.toFixed(2)}</Text>
               </View>
-              <View style={[styles.dispTag, { backgroundColor: item.disponible ? '#22C55E18' : '#EF444418' }]}>
-                <Text style={[styles.dispText, { color: item.disponible ? '#22C55E' : '#EF4444' }]}>
-                  {item.disponible ? '● Activo' : '● Inactivo'}
+              <View style={[styles.dispTag, { backgroundColor: item.disponible ? theme.status.successBg : theme.status.errorBg }]}>
+                <View style={[styles.dispDot, { backgroundColor: item.disponible ? theme.status.success : theme.status.error }]} />
+                <Text style={[styles.dispText, { color: item.disponible ? theme.status.success : theme.status.error }]}>
+                  {item.disponible ? 'Activo' : 'Inactivo'}
                 </Text>
               </View>
             </View>
             <View style={styles.cardActions}>
-              <TouchableOpacity style={[styles.btnAction, { borderColor: Dark.border }]} onPress={() => abrirEditar(item)}>
-                <Text style={styles.btnActionText}>✏️  Editar</Text>
+              <TouchableOpacity style={[styles.btnAction, { borderColor: theme.border.default }]} onPress={() => abrirEditar(item)}>
+                <Ionicons name="pencil-outline" size={14} color={theme.text.secondary} />
+                <Text style={[styles.btnActionText, { color: theme.text.secondary }]}>Editar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.btnAction, { borderColor: Crimson.primary + '44' }]}
+              <TouchableOpacity style={[styles.btnAction, { borderColor: theme.status.error + '44' }]}
                 onPress={() => item.id && eliminar(item.id, item.nombre)}>
-                <Text style={[styles.btnActionText, { color: Crimson.light }]}>🗑️  Eliminar</Text>
+                <Ionicons name="trash-outline" size={14} color={theme.status.error} />
+                <Text style={[styles.btnActionText, { color: theme.status.error }]}>Eliminar</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={{ fontSize: 52 }}>{CAT_EMOJI[catActiva]}</Text>
-            <Text style={styles.emptyText}>Sin platillos en {catActiva}</Text>
-            <TouchableOpacity style={[styles.btnEmptyAdd, { borderColor: Crimson.primary }]} onPress={abrirNuevo}>
-              <Text style={[styles.btnEmptyAddText, { color: Crimson.primary }]}>+ Agregar el primero</Text>
+            <Ionicons name="restaurant-outline" size={48} color={theme.text.muted} />
+            <Text style={[styles.emptyText, { color: theme.text.secondary }]}>Sin platillos en {catActiva}</Text>
+            <TouchableOpacity style={[styles.btnEmptyAdd, { borderColor: theme.accent.primary }]} onPress={abrirNuevo}>
+              <Text style={[{ color: theme.accent.primary, fontWeight: '700' }]}>Agregar el primero</Text>
             </TouchableOpacity>
           </View>
         }
@@ -153,46 +163,50 @@ const MenuEmpleadoScreen: React.FC = () => {
 
       {/* Modal */}
       <Modal visible={modal} animationType="slide" transparent>
-        <View style={styles.overlay}>
-          <View style={styles.modalBox}>
-            <View style={styles.handle} />
+        <View style={[styles.overlay, { backgroundColor: theme.bg.overlay }]}>
+          <View style={[styles.modalBox, { backgroundColor: theme.bg.elevated, borderColor: theme.border.default }]}>
+            <View style={[styles.handle, { backgroundColor: theme.border.default }]} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>{editando ? 'Editar platillo' : 'Nuevo platillo'}</Text>
-              <TouchableOpacity onPress={() => setModal(false)} style={styles.closeBtn}>
-                <Text style={styles.closeText}>✕</Text>
+              <Text style={[styles.modalTitulo, { color: theme.text.primary }]}>
+                {editando ? 'Editar platillo' : 'Nuevo platillo'}
+              </Text>
+              <TouchableOpacity onPress={() => setModal(false)} style={[styles.closeBtn, { backgroundColor: theme.bg.input }]}>
+                <Ionicons name="close" size={18} color={theme.text.secondary} />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <InputField label="Nombre" value={nombre} onChangeText={setNombre}
-                placeholder="Ej. Tacos al Pastor" error={errs.nombre} required accentColor={Crimson.primary} />
+                placeholder="Ej. Tacos al Pastor" error={errs.nombre} required />
               <InputField label="Descripción" value={descripcion} onChangeText={setDesc}
                 placeholder="Ingredientes o descripción" error={errs.descripcion}
-                multiline numberOfLines={2} required accentColor={Crimson.primary} />
+                multiline numberOfLines={2} required />
               <InputField label="Precio (MXN)" value={precio} onChangeText={setPrecio}
-                placeholder="0.00" keyboardType="decimal-pad" error={errs.precio} required accentColor={Crimson.primary} />
+                placeholder="0.00" keyboardType="decimal-pad" error={errs.precio} required />
 
-              <Text style={styles.catLabel}>CATEGORÍA</Text>
+              <Text style={[styles.catLabel, { color: theme.text.muted }]}>CATEGORÍA</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>
                 {CATEGORIAS.map(cat => (
                   <TouchableOpacity key={cat}
-                    style={[styles.catChip, categoria === cat && { backgroundColor: Crimson.subtle, borderColor: Crimson.primary }]}
+                    style={[styles.catChip, { backgroundColor: theme.bg.input, borderColor: theme.border.default },
+                      categoria === cat && { backgroundColor: theme.accent.subtle, borderColor: theme.accent.primary }]}
                     onPress={() => setCategoria(cat)}>
-                    <Text style={styles.catChipEmoji}>{CAT_EMOJI[cat]}</Text>
-                    <Text style={[styles.catChipText, categoria === cat && { color: Crimson.primary }]}>{cat}</Text>
+                    <Ionicons name={CAT_ICON[cat]} size={13} color={categoria === cat ? theme.accent.primary : theme.text.muted} />
+                    <Text style={[styles.catChipText, { color: categoria === cat ? theme.accent.primary : theme.text.secondary },
+                      categoria === cat && { fontWeight: '700' }]}>{cat}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
-              <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Disponible en menú</Text>
+              <View style={[styles.switchRow, { backgroundColor: theme.bg.input, borderColor: theme.border.default }]}>
+                <Text style={[styles.switchLabel, { color: theme.text.secondary }]}>Disponible en menú</Text>
                 <Switch value={disponible} onValueChange={setDisponible}
-                  trackColor={{ false: Dark.bg3, true: Crimson.dark }}
-                  thumbColor={disponible ? Crimson.primary : Dark.textMuted} />
+                  trackColor={{ false: theme.bg.card, true: theme.accent.dark }}
+                  thumbColor={disponible ? theme.accent.primary : theme.text.muted} />
               </View>
 
               <Button label={editando ? 'Guardar cambios' : 'Agregar al menú'}
-                onPress={guardar} color={Crimson.primary} style={{ marginBottom: Spacing.xl }} />
+                onPress={guardar} style={{ marginBottom: Spacing.xl }} />
             </ScrollView>
           </View>
         </View>
@@ -202,47 +216,44 @@ const MenuEmpleadoScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  screen:    { flex: 1, backgroundColor: Dark.bg0 },
-  header:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.screenX, paddingTop: Spacing.screenH, paddingBottom: Spacing.md },
-  titulo:    { ...Typography.h1, color: Dark.textPrimary },
-  subtitulo: { ...Typography.body, color: Dark.textSecondary, marginTop: 2 },
-  btnAdd:    { borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10 },
-  btnAddText:{ color: '#fff', fontWeight: '700', fontSize: 14 },
-  tabs:      { maxHeight: 56, marginBottom: Spacing.sm },
-  tab:       { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.full, marginRight: 8, backgroundColor: Dark.bg2, borderWidth: 1, borderColor: Dark.border },
-  tabEmoji:  { fontSize: 15 },
-  tabText:   { ...Typography.small, fontWeight: '600', color: Dark.textSecondary },
-  tabCnt:    { width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
-  tabCntText:{ fontSize: 10, fontWeight: '800' },
-  lista:     { paddingHorizontal: Spacing.screenX, paddingBottom: 30 },
-  card:      { backgroundColor: Dark.bg2, borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.sm, borderWidth: 1, borderColor: Dark.border },
-  cardTop:   { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.md },
-  cardInfo:  { flex: 1, marginRight: Spacing.sm },
-  platNombre:{ ...Typography.h4, color: Dark.textPrimary },
-  platDesc:  { ...Typography.small, color: Dark.textSecondary, marginTop: 3, lineHeight: 17 },
-  platPrecio:{ fontSize: 20, fontWeight: '900', marginTop: 6 },
-  dispTag:   { borderRadius: Radius.sm, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start' },
-  dispText:  { fontSize: 11, fontWeight: '700' },
-  cardActions:{ flexDirection: 'row', gap: 8 },
-  btnAction: { flex: 1, borderWidth: 1, borderRadius: Radius.sm, paddingVertical: 8, alignItems: 'center' },
-  btnActionText: { ...Typography.small, color: Dark.textSecondary, fontWeight: '600' },
-  empty:     { alignItems: 'center', paddingTop: 80, gap: 12 },
-  emptyText: { ...Typography.h4, color: Dark.textSecondary },
-  btnEmptyAdd:{ borderWidth: 1.5, borderRadius: Radius.md, paddingHorizontal: Spacing.lg, paddingVertical: 10 },
-  btnEmptyAddText: { fontWeight: '700' },
-  overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
-  modalBox:  { backgroundColor: Dark.bg1, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, padding: Spacing.lg, maxHeight: '92%', borderTopWidth: 1, borderColor: Dark.border },
-  handle:    { width: 40, height: 4, backgroundColor: Dark.border, borderRadius: 2, alignSelf: 'center', marginBottom: Spacing.md },
-  modalHeader:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
-  modalTitulo:{ ...Typography.h2, color: Dark.textPrimary },
-  closeBtn:  { width: 32, height: 32, borderRadius: 16, backgroundColor: Dark.bg3, justifyContent: 'center', alignItems: 'center' },
-  closeText: { color: Dark.textSecondary, fontSize: 14, fontWeight: '700' },
-  catLabel:  { ...Typography.label, color: Dark.textMuted, marginBottom: Spacing.sm },
-  catChip:   { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full, marginRight: 8, backgroundColor: Dark.bg3, borderWidth: 1, borderColor: Dark.border },
-  catChipEmoji: { fontSize: 15 },
-  catChipText:  { ...Typography.small, fontWeight: '600', color: Dark.textSecondary },
-  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Dark.bg3, padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1, borderColor: Dark.border, marginBottom: Spacing.md },
-  switchLabel:{ ...Typography.body, color: Dark.textSecondary },
+  screen:       { flex: 1 },
+  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.screenX, paddingTop: Spacing.screenT, paddingBottom: Spacing.md },
+  titulo:       { ...Typography.h1 },
+  subtitulo:    { ...Typography.body, marginTop: 2 },
+  btnAdd:       { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 9 },
+  btnAddText:   { color: '#fff', fontWeight: '700', fontSize: 14 },
+  tabs:         { maxHeight: 46, marginBottom: Spacing.sm },
+  tab:          { flexDirection: 'row', alignItems: 'center', gap: 5, height: 34, paddingHorizontal: 12, borderRadius: Radius.full, marginRight: 8, borderWidth: 1 },
+  tabText:      { fontSize: 12, fontWeight: '600' },
+  tabCnt:       { width: 17, height: 17, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  tabCntText:   { fontSize: 9, fontWeight: '800' },
+  lista:        { paddingHorizontal: Spacing.screenX, paddingBottom: 30 },
+  card:         { borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.sm, borderWidth: 1 },
+  cardTop:      { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.md },
+  cardInfo:     { flex: 1, marginRight: Spacing.sm },
+  platNombre:   { ...Typography.h4 },
+  platDesc:     { ...Typography.small, marginTop: 3, lineHeight: 17 },
+  platPrecio:   { fontSize: 18, fontWeight: '900', marginTop: 6 },
+  dispTag:      { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: Radius.sm, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'flex-start' },
+  dispDot:      { width: 6, height: 6, borderRadius: 3 },
+  dispText:     { fontSize: 10, fontWeight: '700' },
+  cardActions:  { flexDirection: 'row', gap: 8 },
+  btnAction:    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderWidth: 1, borderRadius: Radius.sm, paddingVertical: 8 },
+  btnActionText:{ fontSize: 12, fontWeight: '600' },
+  empty:        { alignItems: 'center', paddingTop: 80, gap: 12 },
+  emptyText:    { ...Typography.h4 },
+  btnEmptyAdd:  { borderWidth: 1.5, borderRadius: Radius.md, paddingHorizontal: Spacing.lg, paddingVertical: 10 },
+  overlay:      { flex: 1, justifyContent: 'flex-end' },
+  modalBox:     { borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, padding: Spacing.lg, maxHeight: '92%', borderTopWidth: 1 },
+  handle:       { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: Spacing.md },
+  modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
+  modalTitulo:  { ...Typography.h2 },
+  closeBtn:     { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  catLabel:     { ...Typography.label, marginBottom: Spacing.sm },
+  catChip:      { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full, marginRight: 8, borderWidth: 1 },
+  catChipText:  { fontSize: 12, fontWeight: '600' },
+  switchRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.md, borderRadius: Radius.md, borderWidth: 1, marginBottom: Spacing.md },
+  switchLabel:  { ...Typography.body },
 });
 
 export default MenuEmpleadoScreen;

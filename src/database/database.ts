@@ -12,7 +12,6 @@ export const getDatabase = (): SQLite.SQLiteDatabase => {
 export const initDatabase = async (): Promise<void> => {
   const database = getDatabase();
 
-  // Tabla de usuarios
   database.execSync(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,11 +19,16 @@ export const initDatabase = async (): Promise<void> => {
       correo TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
       rol TEXT NOT NULL DEFAULT 'cliente',
+      avatar TEXT DEFAULT NULL,
+      tema TEXT DEFAULT 'dark',
       created_at TEXT DEFAULT (datetime('now'))
     );
   `);
 
-  // Tabla de platillos
+  // Migración: agregar columnas si no existen (para bases de datos ya creadas)
+  try { database.execSync(`ALTER TABLE usuarios ADD COLUMN avatar TEXT DEFAULT NULL;`); } catch (_) {}
+  try { database.execSync(`ALTER TABLE usuarios ADD COLUMN tema TEXT DEFAULT 'dark';`); } catch (_) {}
+
   database.execSync(`
     CREATE TABLE IF NOT EXISTS platillos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,7 +41,6 @@ export const initDatabase = async (): Promise<void> => {
     );
   `);
 
-  // Tabla de pedidos (del cliente)
   database.execSync(`
     CREATE TABLE IF NOT EXISTS pedidos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,7 +53,6 @@ export const initDatabase = async (): Promise<void> => {
     );
   `);
 
-  // Tabla detalle de pedido
   database.execSync(`
     CREATE TABLE IF NOT EXISTS pedido_detalle (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,11 +65,7 @@ export const initDatabase = async (): Promise<void> => {
     );
   `);
 
-  // Datos de ejemplo si no hay platillos
-  const count = database.getFirstSync<{ count: number }>(
-    'SELECT COUNT(*) as count FROM platillos'
-  );
-
+  const count = database.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM platillos');
   if (count?.count === 0) {
     database.execSync(`
       INSERT INTO platillos (nombre, descripcion, precio, categoria, disponible) VALUES
@@ -86,7 +84,6 @@ export const initDatabase = async (): Promise<void> => {
     `);
   }
 
-  // Crear empleado de prueba si no existe
   const empleado = database.getFirstSync<{ count: number }>(
     "SELECT COUNT(*) as count FROM usuarios WHERE rol = 'empleado'"
   );
@@ -96,4 +93,5 @@ export const initDatabase = async (): Promise<void> => {
       VALUES ('Administrador', 'admin@elsabor.mx', 'admin123', 'empleado');
     `);
   }
+  
 };

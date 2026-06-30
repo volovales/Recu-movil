@@ -6,44 +6,34 @@ export interface Usuario {
   correo: string;
   password: string;
   rol: 'cliente' | 'empleado';
+  avatar?: string | null;
+  tema?: 'dark' | 'light';
   created_at?: string;
 }
 
 export const CODIGO_EMPLEADO = 'EMPLEADO2025';
 
-// Validar formato de correo
-export const validarCorreo = (correo: string): boolean => {
-  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return regex.test(correo);
-};
+export const validarCorreo = (correo: string): boolean =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
 
-// Verificar si correo ya existe
 export const correoExiste = (correo: string): boolean => {
   const db = getDatabase();
-  const result = db.getFirstSync<{ count: number }>(
+  const r = db.getFirstSync<{ count: number }>(
     'SELECT COUNT(*) as count FROM usuarios WHERE correo = ?',
     [correo.toLowerCase().trim()]
   );
-  return (result?.count ?? 0) > 0;
+  return (r?.count ?? 0) > 0;
 };
 
-// Registrar usuario
 export const registrarUsuario = (
-  nombre: string,
-  correo: string,
-  password: string,
-  codigoEmpleado?: string
+  nombre: string, correo: string, password: string, codigoEmpleado?: string
 ): { ok: boolean; error?: string; usuario?: Usuario } => {
-  // Validaciones
   if (!nombre.trim() || nombre.trim().length < 2)
     return { ok: false, error: 'El nombre debe tener al menos 2 caracteres.' };
-
   if (!validarCorreo(correo))
     return { ok: false, error: 'El correo no tiene un formato válido.' };
-
   if (correoExiste(correo))
     return { ok: false, error: 'Este correo ya está registrado.' };
-
   if (password.length < 6)
     return { ok: false, error: 'La contraseña debe tener al menos 6 caracteres.' };
 
@@ -57,17 +47,13 @@ export const registrarUsuario = (
   );
 
   const usuario = db.getFirstSync<Usuario>(
-    'SELECT * FROM usuarios WHERE id = ?',
-    [result.lastInsertRowId]
+    'SELECT * FROM usuarios WHERE id = ?', [result.lastInsertRowId]
   );
-
   return { ok: true, usuario: usuario ?? undefined };
 };
 
-// Login
 export const loginUsuario = (
-  correo: string,
-  password: string
+  correo: string, password: string
 ): { ok: boolean; error?: string; usuario?: Usuario } => {
   if (!correo.trim()) return { ok: false, error: 'Ingresa tu correo.' };
   if (!password.trim()) return { ok: false, error: 'Ingresa tu contraseña.' };
@@ -77,20 +63,22 @@ export const loginUsuario = (
     'SELECT * FROM usuarios WHERE correo = ? AND password = ?',
     [correo.toLowerCase().trim(), password]
   );
-
   if (!usuario) return { ok: false, error: 'Correo o contraseña incorrectos.' };
-
   return { ok: true, usuario };
 };
 
-// Obtener usuario por id
 export const obtenerUsuarioPorId = (id: number): Usuario | null => {
   const db = getDatabase();
   return db.getFirstSync<Usuario>('SELECT * FROM usuarios WHERE id = ?', [id]) ?? null;
 };
 
-// Obtener todos los usuarios (para empleado)
-export const obtenerUsuarios = (): Usuario[] => {
+// FIX Error 2 y 5: guardar avatar y tema por usuario
+export const actualizarAvatar = (id: number, uri: string): void => {
   const db = getDatabase();
-  return db.getAllSync<Usuario>('SELECT * FROM usuarios ORDER BY created_at DESC');
+  db.runSync('UPDATE usuarios SET avatar = ? WHERE id = ?', [uri, id]);
+};
+
+export const actualizarTema = (id: number, tema: 'dark' | 'light'): void => {
+  const db = getDatabase();
+  db.runSync('UPDATE usuarios SET tema = ? WHERE id = ?', [tema, id]);
 };
