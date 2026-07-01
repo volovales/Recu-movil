@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { obtenerEstadisticas } from '../../database/pedidosDB';
@@ -11,6 +11,7 @@ import { Radius, Shadow, Spacing, Typography } from '../../theme/themes';
 const DashboardEmpleadoScreen: React.FC = () => {
   const { usuario } = useAuth();
   const { theme, mode } = useTheme();
+  const navigation = useNavigation<any>();
   const [stats, setStats]           = useState({ totalPedidos: 0, pedidosPendientes: 0, totalVentas: 0, totalClientes: 0 });
   const [totalPlatillos, setTotal]  = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,8 +36,8 @@ const DashboardEmpleadoScreen: React.FC = () => {
   ] as const;
 
   const quickNav = [
-    { icon: 'receipt-outline', titulo: 'Pedidos en curso',  desc: 'Gestiona y avanza el estado de pedidos activos', color: theme.accent.primary },
-    { icon: 'restaurant-outline', titulo: 'Gestión del menú', desc: 'Agrega, edita o desactiva platillos', color: '#FB923C' },
+    { icon: 'receipt-outline', titulo: 'Pedidos en curso',  desc: 'Gestiona y avanza el estado de pedidos activos', color: theme.accent.primary, route: 'Pedidos' },
+    { icon: 'restaurant-outline', titulo: 'Gestión del menú', desc: 'Agrega, edita o desactiva platillos', color: '#FB923C', route: 'Menu' },
   ] as const;
 
   return (
@@ -80,7 +81,12 @@ const DashboardEmpleadoScreen: React.FC = () => {
       {/* Accesos rápidos */}
       <Text style={[styles.sectionTitle, { color: theme.text.muted }]}>ACCESOS RÁPIDOS</Text>
       {quickNav.map((item, i) => (
-        <View key={i} style={[styles.navCard, { backgroundColor: theme.bg.card, borderColor: theme.border.default, borderLeftColor: item.color }, Shadow.sm]}>
+        <TouchableOpacity
+          key={i}
+          activeOpacity={0.75}
+          onPress={() => navigation.navigate(item.route)}
+          style={[styles.navCard, { backgroundColor: theme.bg.card, borderColor: theme.border.default, borderLeftColor: item.color }, Shadow.sm]}
+        >
           <View style={[styles.navIconWrap, { backgroundColor: item.color + '18' }]}>
             <Ionicons name={item.icon as any} size={20} color={item.color} />
           </View>
@@ -89,7 +95,7 @@ const DashboardEmpleadoScreen: React.FC = () => {
             <Text style={[styles.navDesc, { color: theme.text.secondary }]}>{item.desc}</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={theme.text.muted} />
-        </View>
+        </TouchableOpacity>
       ))}
 
       <Text style={[styles.hint, { color: theme.text.muted }]}>Desliza hacia abajo para actualizar</Text>

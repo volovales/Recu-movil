@@ -1,23 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Alert, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AvatarPicker from '../../components/AvatarPicker';
 import Button from '../../components/Button';
+import EditNameModal from '../../components/EditNameModal';
 import ThemeToggle from '../../components/ThemeToggle';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Radius, Shadow, Spacing, Typography } from '../../theme/themes';
 
 const CuentaEmpleadoScreen: React.FC = () => {
-  const { usuario, logout, updateAvatar } = useAuth();
+  const { usuario, logout, updateAvatar, updateNombre } = useAuth();
   const { theme, mode } = useTheme();
+  const [editNameVisible, setEditNameVisible] = useState(false);
 
   const rows = [
-    { icon: 'person-outline',   label: 'Nombre', val: usuario?.nombre ?? '' },
-    { icon: 'mail-outline',     label: 'Correo', val: usuario?.correo ?? '' },
-    { icon: 'briefcase-outline',label: 'Rol',    val: 'Empleado' },
-    { icon: 'key-outline',      label: 'Acceso', val: 'Completo' },
-    { icon: 'calendar-outline', label: 'Desde',  val: usuario?.created_at ? new Date(usuario.created_at).toLocaleDateString('es-MX') : 'N/A' },
+    { icon: 'mail-outline',      label: 'Correo', val: usuario?.correo ?? '' },
+    { icon: 'briefcase-outline', label: 'Rol',    val: 'Empleado' },
+    { icon: 'key-outline',       label: 'Acceso', val: 'Completo' },
+    { icon: 'calendar-outline',  label: 'Desde',  val: usuario?.created_at ? new Date(usuario.created_at).toLocaleDateString('es-MX') : 'N/A' },
   ];
 
   return (
@@ -36,6 +37,24 @@ const CuentaEmpleadoScreen: React.FC = () => {
           <Text style={[styles.rolText, { color: '#fff' }]}>Empleado</Text>
         </View>
       </View>
+
+      {/* Editar nombre */}
+      <TouchableOpacity
+        style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.default }, Shadow.sm]}
+        onPress={() => setEditNameVisible(true)}
+        activeOpacity={0.75}
+      >
+        <View style={styles.sectionRow}>
+          <View style={styles.sectionLeft}>
+            <Ionicons name="person-outline" size={18} color={theme.accent.primary} />
+            <View>
+              <Text style={[styles.sectionLabel, { color: theme.text.primary }]}>Editar nombre</Text>
+              <Text style={[styles.sectionSub, { color: theme.text.muted }]}>{usuario?.nombre}</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={theme.text.muted} />
+        </View>
+      </TouchableOpacity>
 
       <View style={[styles.section, { backgroundColor: theme.bg.card, borderColor: theme.border.default }, Shadow.sm]}>
         <View style={styles.sectionRow}>
@@ -73,6 +92,13 @@ const CuentaEmpleadoScreen: React.FC = () => {
         ])}
         variant="outline"
         style={styles.logoutBtn}
+      />
+
+      <EditNameModal
+        visible={editNameVisible}
+        currentName={usuario?.nombre ?? ''}
+        onClose={() => setEditNameVisible(false)}
+        onSave={updateNombre}
       />
     </ScrollView>
   );

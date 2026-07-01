@@ -78,6 +78,18 @@ export const actualizarAvatar = (id: number, uri: string): void => {
   db.runSync('UPDATE usuarios SET avatar = ? WHERE id = ?', [uri, id]);
 };
 
+export const actualizarNombre = (
+  id: number, nombre: string
+): { ok: boolean; error?: string } => {
+  const limpio = nombre.trim();
+  if (!limpio) return { ok: false, error: 'El nombre no puede estar vacío.' };
+  if (limpio.length < 2) return { ok: false, error: 'El nombre debe tener al menos 2 caracteres.' };
+
+  const db = getDatabase();
+  db.runSync('UPDATE usuarios SET nombre = ? WHERE id = ?', [limpio, id]);
+  return { ok: true };
+};
+
 export const actualizarTema = (id: number, tema: 'dark' | 'light'): void => {
   const db = getDatabase();
   db.runSync('UPDATE usuarios SET tema = ? WHERE id = ?', [tema, id]);
